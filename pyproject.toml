@@ -6,6 +6,9 @@ authors = ["Portal Coddfy Team"]
 readme = "README.md"
 packages = [{include = "backend"}]
 
+[tool.poetry.plugins."paste.app_factory"]
+main = "backend.app:main"
+
 [tool.poetry.dependencies]
 python = "^3.11"
 # Framework Pyramid
