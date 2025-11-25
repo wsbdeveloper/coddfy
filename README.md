@@ -1,8 +1,8 @@
-# Cursor Contracts Manager
+# Coddfy Contracts Manager CCM
 
 Sistema de gestão de contratos de consultoria com Python (Pyramid) e React (TypeScript).
 
-## 🚀 Início Rápido
+## Início Rápido
 
 ```bash
 # 1. Iniciar PostgreSQL
@@ -10,26 +10,39 @@ docker-compose up -d db
 
 # 2. Configurar banco
 poetry install --no-root
-poetry run alembic upgrade head
-poetry run python scripts/create_admin.py
+cd backend && poetry run alembic -c alembic.ini upgrade head && cd ..
+poetry run python backend/scripts/create_admin.py
 
 # 3. Iniciar backend
-poetry run python run_backend.py
+poetry run python -m backend
 ```
 
 **Acessar:**
-- 🌐 Swagger UI: http://localhost:6543/api/docs/swagger
-- 👤 Login: `admin` / `admin123`
+- Swagger UI: http://localhost:6543/api/docs/swagger
+- Login: `admin` / `admin123`
 
-## 📚 Documentação
+## Documentação
 
-Ver **[DOCUMENTACAO.md](DOCUMENTACAO.md)** para:
-- Arquitetura completa
-- API Endpoints
-- Configuração
-- Comandos úteis
-- Troubleshooting
-- Deploy
+- **[DOCUMENTACAO.md](DOCUMENTACAO.md)** - Documentação completa do projeto
+- **[DEPLOY.md](DEPLOY.md)** - Guia de deploy (Vercel + Render)
+- **[ENV_VARIABLES.md](ENV_VARIABLES.md)** - Variáveis de ambiente
+
+## Deploy
+
+O projeto está configurado para deploy:
+- **Frontend**: [Vercel](https://vercel.com) - Veja [DEPLOY.md](DEPLOY.md)
+- **Backend**: [Render](https://render.com) - Veja [DEPLOY.md](DEPLOY.md)
+
+## 🔀 Separar Repositórios
+
+Para separar este projeto em dois repositórios independentes (backend e frontend), veja:
+
+**[SPLIT_REPOSITORIES.md](SPLIT_REPOSITORIES.md)** - Guia completo de separação
+
+**Script rápido:**
+```bash
+./scripts/split_all.sh
+```
 
 ## 🛠️ Stack
 
@@ -42,10 +55,11 @@ Ver **[DOCUMENTACAO.md](DOCUMENTACAO.md)** para:
 ```
 portal-coddfy/
 ├── backend/           # API Python/Pyramid
+│   ├── alembic/      # Migrações BD
+│   ├── scripts/      # Scripts auxiliares
+│   └── ...
 ├── frontend/          # Interface React
-├── alembic/          # Migrações BD
-├── scripts/          # Scripts auxiliares
-└── run_backend.py    # Iniciar servidor
+└── ...
 ```
 
 ## 🎯 Features

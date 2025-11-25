@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "cursor-contracts-manager"
+name = "coddfy-contracts-manager-ccm"
 version = "0.1.0"
-description = "Sistema de gestão de contratos de consultoria"
+description = "Coddfy Contracts Manager CCM - Sistema de gestão de contratos de consultoria"
 authors = ["Portal Coddfy Team"]
 readme = "README.md"
 

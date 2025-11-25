@@ -40,17 +40,16 @@ services:
       - "6543:6543"
     volumes:
       - ./backend:/app/backend
-      - ./alembic:/app/alembic
-      - ./alembic.ini:/app/alembic.ini
     depends_on:
       db:
         condition: service_healthy
+    working_dir: /app/backend
     command: >
       sh -c "
         echo '🔄 Aguardando banco de dados...' &&
         sleep 5 &&
         echo '📦 Rodando migrações...' &&
-        alembic upgrade head &&
+        alembic -c alembic.ini upgrade head &&
         echo '🚀 Iniciando servidor backend...' &&
         python -m backend
       "
@@ -60,7 +59,7 @@ services:
   # Frontend React (desenvolvimento)
   frontend:
     build:
-      context: .
+      context: ./frontend
       dockerfile: Dockerfile.frontend
     container_name: ccm_frontend
     environment:

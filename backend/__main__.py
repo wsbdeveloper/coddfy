@@ -14,7 +14,14 @@ def main():
     - Configura os logs
     - Inicia o servidor WSGI com Waitress
     """
-    config_uri = 'backend/development.ini'
+    import os
+    
+    # Determina qual arquivo de configuração usar
+    app_env = os.getenv('APP_ENV', 'development')
+    if app_env == 'production':
+        config_uri = 'backend/production.ini'
+    else:
+        config_uri = 'backend/development.ini'
     
     # Setup logging com base no arquivo de configuração
     setup_logging(config_uri)
@@ -22,15 +29,20 @@ def main():
     # Cria a aplicação Pyramid
     app = get_app(config_uri, 'main')
     
+    # Obtém host e porta das variáveis de ambiente
+    host = os.getenv('APP_HOST', '0.0.0.0')
+    port = int(os.getenv('APP_PORT', 6543))
+    
     # Inicia o servidor
     print("=" * 80)
-    print("Cursor Contracts Manager - Backend Server")
+    print("Coddfy Contracts Manager CCM - Backend Server")
     print("=" * 80)
-    print("Servidor rodando em: http://0.0.0.0:6543")
-    print("API Docs: http://0.0.0.0:6543/api/docs")
+    print(f"Environment: {app_env}")
+    print(f"Servidor rodando em: http://{host}:{port}")
+    print(f"API Docs: http://{host}:{port}/api/docs")
     print("=" * 80)
     
-    serve(app, listen='0.0.0.0:6543')
+    serve(app, listen=f'{host}:{port}')
 
 
 if __name__ == '__main__':

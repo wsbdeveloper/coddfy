@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: Cursor Contracts Manager API
+  title: Coddfy Contracts Manager CCM API
   description: |
     API REST para gestão de contratos de consultoria com controle financeiro, 
     vigência e desempenho técnico dos consultores alocados.

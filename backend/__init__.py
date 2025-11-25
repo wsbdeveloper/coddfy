@@ -1,5 +1,5 @@
 """
-Cursor Contracts Manager (CCM) - Backend Application
+Coddfy Contracts Manager CCM - Backend Application
 Sistema de gestão de contratos de consultoria
 """
 

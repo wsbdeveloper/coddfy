@@ -7,8 +7,8 @@ from alembic import context
 import os
 import sys
 
-# Adiciona o diretório do projeto ao path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Adiciona o diretório raiz do projeto ao path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from backend.database import Base
 from backend.models import *  # noqa - Importa todos os models

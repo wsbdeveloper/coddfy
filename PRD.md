@@ -1,12 +1,12 @@
-# 🧾 Product Requirements Document (PRD)
+# Product Requirements Document (PRD)
 
-## 🏷️ Nome do Produto
-**Cursor Contracts Manager (CCM)**
+## Nome do Produto
+**Coddfy Contracts Manager CCM**
 
 ---
 
-## 🎯 Visão Geral
-O **Cursor Contracts Manager** é uma plataforma web para **gestão de contratos de consultoria**, com controle financeiro, vigência e desempenho técnico dos consultores alocados.
+## Visão Geral
+O **Coddfy Contracts Manager CCM** é uma plataforma web para **gestão de contratos de consultoria**, com controle financeiro, vigência e desempenho técnico dos consultores alocados.
 
 O sistema fornece:
 - Painel geral com indicadores de contratos e consultores;
@@ -16,14 +16,14 @@ O sistema fornece:
 
 ---
 
-## 👥 Público-Alvo
+## Público-Alvo
 - Gestores de contratos e projetos;
 - Equipes de RH e Operações;
 - Time financeiro responsável pelo faturamento.
 
 ---
 
-## 🧩 Funcionalidades Principais
+## Funcionalidades Principais
 
 ### 1. **Dashboard (Página Inicial)**
 **Objetivo:** Apresentar visão geral consolidada dos contratos e consultores.
@@ -102,7 +102,7 @@ O sistema fornece:
 
 ---
 
-## 🧮 Modelagem de Dados
+## Modelagem de Dados
 
 ### **clients**
 | Campo | Tipo | Descrição |
@@ -142,7 +142,7 @@ O sistema fornece:
 
 ---
 
-## 📈 KPIsimage.png
+## KPIsimage.png
 - % de contratos ativos x inativos  
 - Média geral de feedbacks  
 - % médio de consumo financeiro  
@@ -150,7 +150,7 @@ O sistema fornece:
 
 ---
 
-## 🔒 Requisitos Não Funcionais
+## Requisitos Não Funcionais
 - **Segurança:** HTTPS, JWT e CORS configurados  
 - **Performance:** Resposta média de API < 200ms  
 - **Escalabilidade:** Multi-cliente preparado  
@@ -159,7 +159,7 @@ O sistema fornece:
 
 ---
 
-## 🧠 Futuras Evoluções
+## Futuras Evoluções
 - Exportação de relatórios (PDF / Excel)  
 - Gráficos comparativos de desempenho  
 - Integração com ServiceNow / Jira  
@@ -167,7 +167,7 @@ O sistema fornece:
 
 ---
 
-## 📅 Cronograma de Entrega
+## Cronograma de Entrega
 
 | Fase | Entrega | Duração |
 |------|----------|---------|
@@ -178,6 +178,4 @@ O sistema fornece:
 | **Total Estimado:** | **6 semanas** |
 
 ---
-
-## 📦 Estrutura sugerida de pastas
 

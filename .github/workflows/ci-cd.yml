@@ -47,11 +47,11 @@ jobs:
       
       - name: 🎨 Executar Black (formatação de código)
         run: |
-          poetry run black --check backend/ alembic/ scripts/
+          poetry run black --check backend/
       
       - name: 🔍 Executar Flake8 (linting)
         run: |
-          poetry run flake8 backend/ alembic/ scripts/ --max-line-length=100 --extend-ignore=E203,W503
+          poetry run flake8 backend/ --max-line-length=100 --extend-ignore=E203,W503
       
       - name: 🔎 Executar MyPy (type checking)
         run: |
@@ -130,7 +130,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://${{ env.POSTGRES_USER }}:${{ env.POSTGRES_PASSWORD }}@localhost:5432/${{ env.POSTGRES_DB }}
         run: |
-          poetry run alembic upgrade head
+          cd backend && poetry run alembic -c alembic.ini upgrade head && cd ..
       
       - name: 🧪 Executar testes do backend
         env:
@@ -183,8 +183,8 @@ jobs:
       - name: 🏗️ Build da imagem do Frontend
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./Dockerfile.frontend
+          context: ./frontend
+          file: ./frontend/Dockerfile.frontend
           push: false  # Mude para true se quiser fazer push
           tags: portal-coddfy-frontend:latest
           cache-from: type=gha

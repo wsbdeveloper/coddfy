@@ -12,7 +12,7 @@ def api_home(request):
     Retorna informações sobre a API e rotas disponíveis
     """
     return {
-        "name": "Cursor Contracts Manager API",
+        "name": "Coddfy Contracts Manager CCM API",
         "version": "1.0.0",
         "description": "API REST para gestão de contratos de consultoria",
         "endpoints": {

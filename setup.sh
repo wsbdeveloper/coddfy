@@ -6,7 +6,7 @@
 set -e
 
 echo "=========================================="
-echo "🚀 Cursor Contracts Manager - Setup"
+echo "🚀 Coddfy Contracts Manager CCM - Setup"
 echo "=========================================="
 
 # Verifica se o .env existe, senão cria a partir do .env.example
@@ -37,15 +37,15 @@ sleep 5
 
 echo ""
 echo "🔄 Criando migração inicial do banco de dados..."
-poetry run alembic revision --autogenerate -m "Initial migration"
+cd backend && poetry run alembic -c alembic.ini revision --autogenerate -m "Initial migration" && cd ..
 
 echo ""
 echo "📊 Aplicando migrações no banco de dados..."
-poetry run alembic upgrade head
+cd backend && poetry run alembic -c alembic.ini upgrade head && cd ..
 
 echo ""
 echo "👤 Criando usuário admin padrão..."
-poetry run python scripts/create_admin.py
+poetry run python backend/scripts/create_admin.py
 
 echo ""
 echo "=========================================="

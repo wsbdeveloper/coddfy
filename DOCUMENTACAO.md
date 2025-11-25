@@ -1,4 +1,4 @@
-# 📘 Cursor Contracts Manager (CCM) - Documentação Completa
+# 📘 Coddfy Contracts Manager CCM - Documentação Completa
 
 > Sistema de gestão de contratos de consultoria com Python (Pyramid) e React (TypeScript)
 
@@ -73,13 +73,13 @@ docker-compose up -d db
 poetry install --no-root
 
 # 4. Configurar banco de dados
-poetry run alembic revision --autogenerate -m "Initial migration"
-poetry run alembic upgrade head
-poetry run python scripts/create_admin.py
-poetry run python scripts/seed_data.py  # Opcional: dados de exemplo
+cd backend && poetry run alembic -c alembic.ini revision --autogenerate -m "Initial migration" && cd ..
+cd backend && poetry run alembic -c alembic.ini upgrade head && cd ..
+poetry run python backend/scripts/create_admin.py
+poetry run python backend/scripts/seed_data.py  # Opcional: dados de exemplo
 
 # 5. Iniciar backend
-poetry run python run_backend.py
+poetry run python -m backend
 ```
 
 ### Acessar
@@ -118,11 +118,12 @@ portal-coddfy/
 │   │   ├── lib/              # Utilitários
 │   │   └── types/            # Tipos TypeScript
 │   └── package.json
-├── alembic/                   # Migrações BD
-├── scripts/                   # Scripts auxiliares
-│   ├── create_admin.py       # Criar admin
-│   └── seed_data.py          # Popular dados
-├── run_backend.py            # Rodar backend
+├── backend/
+│   ├── alembic/              # Migrações BD
+│   ├── scripts/              # Scripts auxiliares
+│   │   ├── create_admin.py  # Criar admin
+│   │   └── seed_data.py     # Popular dados
+│   └── ...
 ├── docker-compose.yml        # Docker setup
 └── pyproject.toml           # Dependências Python
 ```
@@ -257,19 +258,19 @@ portal-coddfy/
 
 ```bash
 # Criar nova migração
-poetry run alembic revision --autogenerate -m "Descrição"
+cd backend && poetry run alembic -c alembic.ini revision --autogenerate -m "Descrição" && cd ..
 
 # Aplicar migrações
-poetry run alembic upgrade head
+cd backend && poetry run alembic -c alembic.ini upgrade head && cd ..
 
 # Reverter última migração
-poetry run alembic downgrade -1
+cd backend && poetry run alembic -c alembic.ini downgrade -1 && cd ..
 
 # Ver histórico
-poetry run alembic history
+cd backend && poetry run alembic -c alembic.ini history && cd ..
 
 # Ver status atual
-poetry run alembic current
+cd backend && poetry run alembic -c alembic.ini current && cd ..
 ```
 
 ---
@@ -310,16 +311,16 @@ VITE_API_URL=http://localhost:6543/api
 
 ```bash
 # Iniciar servidor
-poetry run python run_backend.py
+poetry run python -m backend
 
 # Shell interativo
 poetry run pshell backend/development.ini
 
 # Criar usuário admin
-poetry run python scripts/create_admin.py
+poetry run python backend/scripts/create_admin.py
 
 # Popular dados de exemplo
-poetry run python scripts/seed_data.py
+poetry run python backend/scripts/seed_data.py
 
 # Testes (quando implementados)
 poetry run pytest
@@ -483,7 +484,7 @@ cat backend.log
 lsof -i :6543
 
 # Matar processo
-pkill -f "python run_backend.py"
+pkill -f "python -m backend"
 
 # Reinstalar dependências
 poetry install --no-root
@@ -509,7 +510,7 @@ psql postgresql://ccm_user:ccm_password@localhost:5432/ccm_db -c "SELECT 1"
 poetry shell
 
 # Ou rodar com poetry run
-poetry run python run_backend.py
+poetry run python -m backend
 ```
 
 ### Frontend não carrega
@@ -541,7 +542,7 @@ CORS_ORIGINS=http://localhost:5173,http://localhost:3000
 
 ## 📊 Dados de Exemplo
 
-Após rodar `poetry run python scripts/seed_data.py`:
+Após rodar `poetry run python backend/scripts/seed_data.py`:
 
 ### Clientes criados:
 - Tech Solutions Ltda
@@ -642,10 +643,10 @@ Para novos desenvolvedores:
 - [ ] Copiar `.env.example` para `.env`
 - [ ] Rodar `docker-compose up -d db`
 - [ ] Rodar `poetry install --no-root`
-- [ ] Aplicar migrações: `poetry run alembic upgrade head`
-- [ ] Criar admin: `poetry run python scripts/create_admin.py`
-- [ ] Popular dados: `poetry run python scripts/seed_data.py`
-- [ ] Iniciar backend: `poetry run python run_backend.py`
+- [ ] Aplicar migrações: `cd backend && poetry run alembic -c alembic.ini upgrade head && cd ..`
+- [ ] Criar admin: `poetry run python backend/scripts/create_admin.py`
+- [ ] Popular dados: `poetry run python backend/scripts/seed_data.py`
+- [ ] Iniciar backend: `poetry run python -m backend`
 - [ ] Testar Swagger UI: http://localhost:6543/api/docs/swagger
 - [ ] Fazer login e explorar endpoints
 - [ ] (Opcional) Instalar deps frontend: `cd frontend && npm install`

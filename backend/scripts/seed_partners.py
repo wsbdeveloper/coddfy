@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 """
 Script para popular o banco com parceiros de exemplo e vincular dados existentes
-Executa: poetry run python scripts/seed_partners.py
+Executa: poetry run python backend/scripts/seed_partners.py
 """
 import sys
 import os
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 
-# Adicionar o diretório raiz ao path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Adiciona o diretório raiz do projeto ao path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker

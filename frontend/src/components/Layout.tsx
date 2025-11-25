@@ -75,7 +75,7 @@ export default function Layout() {
           <div className="flex items-center gap-2">
             <FileText className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold">
-              Cursor Contracts Manager
+              Coddfy Contracts Manager CCM
             </span>
           </div>
           <div className="flex-1" />

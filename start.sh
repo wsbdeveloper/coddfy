@@ -6,7 +6,7 @@
 set -e
 
 echo "=========================================="
-echo "🚀 Iniciando Cursor Contracts Manager"
+echo "🚀 Iniciando Coddfy Contracts Manager CCM"
 echo "=========================================="
 
 # Verifica se está no diretório correto
@@ -35,7 +35,7 @@ trap cleanup SIGINT SIGTERM
 # Inicia o backend em background
 echo "🐍 Iniciando backend..."
 cd /home/w3x7/Desktop/lab/portal-coddfy
-poetry run python -m backend > backend.log 2>&1 &
+poetry run python -m backend > backend/backend.log 2>&1 &
 BACKEND_PID=$!
 echo "   Backend PID: $BACKEND_PID"
 
@@ -46,7 +46,7 @@ sleep 5
 # Inicia o frontend em background
 echo "⚛️  Iniciando frontend..."
 cd /home/w3x7/Desktop/lab/portal-coddfy/frontend
-npm run dev > ../frontend.log 2>&1 &
+npm run dev > frontend.log 2>&1 &
 FRONTEND_PID=$!
 echo "   Frontend PID: $FRONTEND_PID"
 
@@ -62,8 +62,8 @@ echo "   Usuário: admin"
 echo "   Senha:   admin123"
 echo ""
 echo "📝 Logs:"
-echo "   Backend:  tail -f backend.log"
-echo "   Frontend: tail -f frontend.log"
+echo "   Backend:  tail -f backend/backend.log"
+echo "   Frontend: tail -f frontend/frontend.log"
 echo ""
 echo "Pressione Ctrl+C para parar os servidores"
 echo "=========================================="

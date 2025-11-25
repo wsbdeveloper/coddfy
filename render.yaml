@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: portal-coddfy-backend
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: |
+      pip install poetry &&
+      poetry config virtualenvs.create false &&
+      poetry install --no-interaction --no-ansi
+    startCommand: |
+      cd backend &&
+      poetry run alembic -c alembic.ini upgrade head &&
+      poetry run python -m backend
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_HOST
+        value: 0.0.0.0
+      - key: APP_PORT
+        value: $PORT
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRATION_HOURS
+        value: 24
+      - key: DATABASE_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+    healthCheckPath: /api/health
+

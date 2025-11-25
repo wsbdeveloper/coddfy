@@ -71,7 +71,18 @@ def main(global_config, **settings):
         if not origin:
             return False
         allowed_origins = get_allowed_origins()
-        return origin in allowed_origins or '*' in allowed_origins
+        
+        # Verifica correspondência exata
+        if origin in allowed_origins or '*' in allowed_origins:
+            return True
+        
+        # Verifica padrões com wildcard (ex: *.vercel.app)
+        import fnmatch
+        for pattern in allowed_origins:
+            if '*' in pattern and fnmatch.fnmatch(origin, pattern):
+                return True
+        
+        return False
     
     def cors_preflight_handler(request):
         """Handler para requisições OPTIONS (CORS preflight)"""

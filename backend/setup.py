@@ -4,7 +4,7 @@ Setup file para o pacote backend
 from setuptools import setup, find_packages
 
 setup(
-    name='cursor-contracts-manager',
+    name='coddfy-contracts-manager-ccm',
     version='0.1.0',
     description='Sistema de gestão de contratos de consultoria',
     author='Portal Coddfy Team',

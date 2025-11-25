@@ -28,7 +28,12 @@ class Config:
     APP_PORT = int(os.getenv('APP_PORT', 6543))
     
     # CORS
-    CORS_ORIGINS = os.getenv('CORS_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
+    # Em produção, aceita domínios da Vercel e outros configurados
+    default_cors = 'http://localhost:5173,http://localhost:3000'
+    if os.getenv('APP_ENV') == 'production':
+        # Adiciona padrões comuns da Vercel
+        default_cors += ',https://*.vercel.app'
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', default_cors).split(',')
     
     @classmethod
     def is_development(cls):

@@ -29,7 +29,7 @@ def setup(env):
     env['transaction'] = transaction
     
     print("=" * 80)
-    print("🐍 Cursor Contracts Manager - Interactive Shell")
+    print("🐍 Coddfy Contracts Manager CCM - Interactive Shell")
     print("=" * 80)
     print("Available objects:")
     print("  - db: Database session")

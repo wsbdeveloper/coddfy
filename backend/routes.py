@@ -11,6 +11,9 @@ def includeme(config):
     Args:
         config: Configurator do Pyramid
     """
+    # Health check
+    config.add_route('health', '/api/health')
+    
     # Prefixo da API
     config.add_route('api_home', '/api')
     config.add_route('api_docs', '/api/docs')

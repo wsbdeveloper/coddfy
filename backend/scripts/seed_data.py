@@ -1,15 +1,15 @@
 """
 Script de dados de exemplo para desenvolvimento
 Popula o banco com dados fictícios
-Executa: poetry run python scripts/seed_data.py
+Executa: poetry run python backend/scripts/seed_data.py
 """
 import sys
 import os
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-# Adiciona o diretório raiz ao path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Adiciona o diretório raiz do projeto ao path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

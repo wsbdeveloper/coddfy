@@ -1,12 +1,12 @@
 """
 Script para criar usuário administrador padrão
-Executa: poetry run python scripts/create_admin.py
+Executa: poetry run python backend/scripts/create_admin.py
 """
 import sys
 import os
 
-# Adiciona o diretório raiz ao path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Adiciona o diretório raiz do projeto ao path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

@@ -24,11 +24,12 @@ RUN poetry install --no-root --no-interaction --no-ansi
 
 # Copia o código da aplicação
 COPY backend ./backend
-COPY alembic ./alembic
-COPY alembic.ini ./
 
 # Expõe a porta do servidor
 EXPOSE 6543
+
+# Define o diretório de trabalho para backend
+WORKDIR /app/backend
 
 # Comando padrão
 CMD ["python", "-m", "backend"]

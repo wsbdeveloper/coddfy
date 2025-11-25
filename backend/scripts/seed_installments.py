@@ -7,8 +7,8 @@ import os
 import sys
 from pathlib import Path
 
-# Adiciona o diretório raiz ao path
-root_dir = Path(__file__).parent.parent
+# Adiciona o diretório raiz do projeto ao path
+root_dir = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(root_dir))
 
 from dotenv import load_dotenv
@@ -92,7 +92,7 @@ def create_installments():
 
 if __name__ == '__main__':
     print("=" * 80)
-    print("🚀 Seed de Parcelas - Cursor Contracts Manager")
+    print("🚀 Seed de Parcelas - Coddfy Contracts Manager CCM")
     print("=" * 80)
     
     create_installments()

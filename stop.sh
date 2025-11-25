@@ -2,7 +2,7 @@
 
 # Script para parar todos os serviços
 
-echo "🛑 Parando Cursor Contracts Manager..."
+echo "🛑 Parando Coddfy Contracts Manager CCM..."
 
 # Para processos Python (backend)
 pkill -f "python -m backend" && echo "✅ Backend parado"

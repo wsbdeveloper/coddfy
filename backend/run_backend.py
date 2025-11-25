@@ -17,7 +17,7 @@ if __name__ == '__main__':
     }
     
     print("=" * 80)
-    print("🚀 Cursor Contracts Manager - Backend Server")
+    print("🚀 Coddfy Contracts Manager CCM - Backend Server")
     print("=" * 80)
     print("📍 Servidor rodando em: http://0.0.0.0:6543")
     print("📚 API: http://0.0.0.0:6543/api")
