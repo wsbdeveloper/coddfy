@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Coddfy Contracts Manager CCM - Sistema de gestão de contratos de consultoria"
 authors = ["Portal Coddfy Team"]
 readme = "README.md"
+packages = [{include = "backend"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
