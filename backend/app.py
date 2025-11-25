@@ -7,7 +7,10 @@ from pyramid.renderers import JSON
 import transaction
 import decimal
 import uuid
+import os
+    
 from datetime import datetime
+from backend.config import config as app_config
 
 
 def decimal_adapter(obj, request):
@@ -27,17 +30,54 @@ def datetime_adapter(obj, request):
 
 def main(global_config, **settings):
     """
-    Função principal que cria e configura a aplicação Pyramid
+    Função principal que cria e configura a aplicação Pyramid.
     
-    Esta função é chamada pelo PasteDeploy quando a aplicação é iniciada
+    As configurações vêm do arquivo .ini, mas são sobrescritas por variáveis de ambiente.
     
     Args:
         global_config: Configuração global do PasteDeploy
-        **settings: Configurações específicas da aplicação
+        **settings: Configurações do arquivo .ini
     
     Returns:
         Aplicação WSGI configurada
     """
+    # Sobrescreve settings com variáveis de ambiente (se existirem)
+    # Isso permite que o .ini tenha valores padrão, mas o ambiente tenha prioridade
+    
+    # Database URL - prioridade: variável de ambiente > .ini
+    if os.getenv('DATABASE_URL'):
+        settings['sqlalchemy.url'] = os.getenv('DATABASE_URL')
+    elif 'sqlalchemy.url' not in settings:
+        # Fallback para config.py se não estiver em nenhum lugar
+        settings['sqlalchemy.url'] = app_config.DATABASE_URL
+    
+    # JWT Secret - prioridade: variável de ambiente > .ini
+    if os.getenv('JWT_SECRET'):
+        settings['jwt.secret'] = os.getenv('JWT_SECRET')
+    elif 'jwt.secret' not in settings or settings.get('jwt.secret') == 'your-secret-key-change-in-production':
+        settings['jwt.secret'] = app_config.JWT_SECRET
+    
+    # JWT Algorithm
+    if os.getenv('JWT_ALGORITHM'):
+        settings['jwt.algorithm'] = os.getenv('JWT_ALGORITHM')
+    elif 'jwt.algorithm' not in settings:
+        settings['jwt.algorithm'] = app_config.JWT_ALGORITHM
+    
+    # JWT Expiration
+    if os.getenv('JWT_EXPIRATION_HOURS'):
+        hours = int(os.getenv('JWT_EXPIRATION_HOURS'))
+        settings['jwt.expiration'] = str(hours * 3600)
+    elif 'jwt.expiration' not in settings:
+        settings['jwt.expiration'] = str(app_config.JWT_EXPIRATION_HOURS * 3600)
+    
+    # CORS Origins - prioridade: variável de ambiente > .ini
+    if os.getenv('CORS_ORIGINS'):
+        # CORS_ORIGINS pode vir separado por vírgula, converter para espaço (formato do Pyramid)
+        cors_origins = os.getenv('CORS_ORIGINS').replace(',', ' ')
+        settings['cors.allow_origins'] = cors_origins
+    elif 'cors.allow_origins' not in settings:
+        settings['cors.allow_origins'] = ' '.join(app_config.CORS_ORIGINS)
+    
     config = Configurator(settings=settings)
     
     # Configura o JSON renderer com adapters customizados
