@@ -1,0 +1,35 @@
+# Dockerfile para o backend Python/Pyramid
+FROM python:3.11-slim
+
+# Define o diretório de trabalho
+WORKDIR /app
+
+# Instala dependências do sistema
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Instala Poetry
+RUN pip install poetry
+
+# Copia arquivos de configuração
+COPY pyproject.toml ./
+
+# Configura o Poetry para não criar virtualenv (já estamos no container)
+RUN poetry config virtualenvs.create false
+
+# Instala dependências do projeto
+RUN poetry install --no-root --no-interaction --no-ansi
+
+# Copia o código da aplicação
+COPY backend ./backend
+COPY alembic ./alembic
+COPY alembic.ini ./
+
+# Expõe a porta do servidor
+EXPOSE 6543
+
+# Comando padrão
+CMD ["python", "-m", "backend"]
+

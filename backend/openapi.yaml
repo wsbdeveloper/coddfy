@@ -1,0 +1,683 @@
+openapi: 3.0.3
+info:
+  title: Cursor Contracts Manager API
+  description: |
+    API REST para gestão de contratos de consultoria com controle financeiro, 
+    vigência e desempenho técnico dos consultores alocados.
+    
+    ## Autenticação
+    A API utiliza JWT (JSON Web Token) para autenticação. Para acessar os endpoints protegidos:
+    1. Faça login em `/api/auth/login` com suas credenciais
+    2. Copie o token retornado
+    3. Adicione o header: `Authorization: Bearer {seu-token}`
+    
+  version: 1.0.0
+  contact:
+    name: Portal Coddfy Team
+    email: admin@coddfy.com
+
+servers:
+  - url: http://localhost:6543/api
+    description: Servidor de desenvolvimento
+  - url: http://0.0.0.0:6543/api
+    description: Servidor local
+
+tags:
+  - name: Authentication
+    description: Endpoints de autenticação e registro
+  - name: Dashboard
+    description: Estatísticas consolidadas do sistema
+  - name: Clients
+    description: Gerenciamento de clientes
+  - name: Contracts
+    description: Gerenciamento de contratos
+  - name: Consultants
+    description: Gerenciamento de consultores
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token JWT obtido através do endpoint de login
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, gestor, leitura]
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          example: admin
+        password:
+          type: string
+          format: password
+          example: admin123
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT token para autenticação
+        user:
+          $ref: '#/components/schemas/User'
+
+    Client:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Contract:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        client_id:
+          type: string
+          format: uuid
+        total_value:
+          type: string
+          description: Valor total do contrato
+        billed_value:
+          type: string
+          description: Valor já faturado
+        balance:
+          type: string
+          description: Saldo restante
+        status:
+          type: string
+          enum: [ativo, inativo, a_vencer]
+        end_date:
+          type: string
+          format: date-time
+        billed_percentage:
+          type: number
+          format: float
+        client:
+          $ref: '#/components/schemas/Client'
+
+    Consultant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        role:
+          type: string
+          description: Cargo do consultor
+        contract_id:
+          type: string
+          format: uuid
+        feedback:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Percentual de avaliação
+        performance_color:
+          type: string
+          enum: [green, orange, red]
+          description: Cor baseada no feedback
+
+    DashboardStats:
+      type: object
+      properties:
+        stats:
+          type: object
+          properties:
+            active_contracts:
+              type: integer
+            inactive_contracts:
+              type: integer
+            allocated_consultants:
+              type: integer
+            average_feedback:
+              type: number
+            total_contracts_value:
+              type: string
+            total_billed_value:
+              type: string
+            total_balance:
+              type: string
+        expiring_contracts:
+          type: array
+          items:
+            type: object
+        financial_summary:
+          type: object
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Mensagem de erro
+
+paths:
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Fazer login
+      description: Autentica um usuário e retorna um token JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login bem-sucedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Registrar novo usuário
+      description: Cria um novo usuário no sistema
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                role:
+                  type: string
+                  enum: [admin, gestor, leitura]
+      responses:
+        '201':
+          description: Usuário criado com sucesso
+        '400':
+          description: Erro na validação ou usuário já existe
+
+  /dashboard:
+    get:
+      tags:
+        - Dashboard
+      summary: Obter estatísticas do dashboard
+      description: Retorna visão geral consolidada dos contratos e consultores
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Estatísticas retornadas com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+        '401':
+          description: Não autorizado
+
+  /clients:
+    get:
+      tags:
+        - Clients
+      summary: Listar clientes
+      description: Retorna lista de todos os clientes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de clientes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clients:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Client'
+    
+    post:
+      tags:
+        - Clients
+      summary: Criar cliente
+      description: Cria um novo cliente
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Cliente criado com sucesso
+        '400':
+          description: Erro na validação
+
+  /clients/{id}:
+    get:
+      tags:
+        - Clients
+      summary: Obter cliente
+      description: Retorna detalhes de um cliente específico
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cliente encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Client'
+        '404':
+          description: Cliente não encontrado
+
+    put:
+      tags:
+        - Clients
+      summary: Atualizar cliente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Cliente atualizado
+        '404':
+          description: Cliente não encontrado
+
+    delete:
+      tags:
+        - Clients
+      summary: Deletar cliente
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cliente removido
+        '400':
+          description: Cliente possui contratos associados
+        '404':
+          description: Cliente não encontrado
+
+  /contracts:
+    get:
+      tags:
+        - Contracts
+      summary: Listar contratos
+      description: Retorna lista de contratos com filtros opcionais
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: client_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ativo, inativo, a_vencer]
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Lista de contratos
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  contracts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Contract'
+
+    post:
+      tags:
+        - Contracts
+      summary: Criar contrato
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - client_id
+                - total_value
+                - end_date
+              properties:
+                name:
+                  type: string
+                client_id:
+                  type: string
+                  format: uuid
+                total_value:
+                  type: number
+                status:
+                  type: string
+                  enum: [ativo, inativo, a_vencer]
+                end_date:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Contrato criado
+        '404':
+          description: Cliente não encontrado
+
+  /contracts/{id}:
+    get:
+      tags:
+        - Contracts
+      summary: Obter contrato
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Contrato encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contract'
+        '404':
+          description: Contrato não encontrado
+
+    put:
+      tags:
+        - Contracts
+      summary: Atualizar contrato
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                total_value:
+                  type: number
+                status:
+                  type: string
+                end_date:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Contrato atualizado
+        '404':
+          description: Contrato não encontrado
+
+    delete:
+      tags:
+        - Contracts
+      summary: Deletar contrato
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Contrato removido
+        '404':
+          description: Contrato não encontrado
+
+  /consultants:
+    get:
+      tags:
+        - Consultants
+      summary: Listar consultores
+      description: Lista consultores agrupados por contrato
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: contract_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Lista de consultores
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groups:
+                    type: array
+                    items:
+                      type: object
+
+    post:
+      tags:
+        - Consultants
+      summary: Criar consultor
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - role
+                - contract_id
+                - feedback
+              properties:
+                name:
+                  type: string
+                role:
+                  type: string
+                contract_id:
+                  type: string
+                  format: uuid
+                feedback:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+      responses:
+        '201':
+          description: Consultor criado
+        '404':
+          description: Contrato não encontrado
+
+  /consultants/{id}:
+    get:
+      tags:
+        - Consultants
+      summary: Obter consultor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Consultor encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consultant'
+        '404':
+          description: Consultor não encontrado
+
+    put:
+      tags:
+        - Consultants
+      summary: Atualizar consultor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                role:
+                  type: string
+                feedback:
+                  type: integer
+      responses:
+        '200':
+          description: Consultor atualizado
+        '404':
+          description: Consultor não encontrado
+
+    delete:
+      tags:
+        - Consultants
+      summary: Deletar consultor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Consultor removido
+        '404':
+          description: Consultor não encontrado
+

@@ -1,0 +1,246 @@
+"""
+Modelos de dados da aplicação
+Define as tabelas do banco de dados usando SQLAlchemy
+"""
+import uuid
+from datetime import datetime
+from sqlalchemy import (
+    Column, String, Integer, Numeric, Boolean, 
+    DateTime, ForeignKey, Enum as SQLEnum, TypeDecorator
+)
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+from backend.database import Base
+import enum
+
+
+# Enums
+class ContractStatus(str, enum.Enum):
+    """Status possíveis de um contrato"""
+    ATIVO = "ativo"
+    INATIVO = "inativo"
+    A_VENCER = "a_vencer"
+
+
+class UserRole(str, enum.Enum):
+    """Níveis de acesso do sistema"""
+    ADMIN_GLOBAL = "admin_global"  # Admin que vê tudo
+    ADMIN_PARTNER = "admin_partner"  # Admin de um parceiro específico
+    USER_PARTNER = "user_partner"  # Usuário comum de um parceiro
+
+
+class UserRoleType(TypeDecorator):
+    """Tipo customizado para converter entre enum Python e valores do banco"""
+    impl = String
+    cache_ok = True
+    
+    def __init__(self):
+        super().__init__(length=50)
+    
+    def process_bind_param(self, value, dialect):
+        """Converte enum Python para valor do banco"""
+        if isinstance(value, UserRole):
+            return value.value
+        return value
+    
+    def process_result_value(self, value, dialect):
+        """Converte valor do banco para enum Python"""
+        if value is None:
+            return None
+        try:
+            return UserRole(value)
+        except ValueError:
+            # Tenta encontrar por valor (case insensitive)
+            for role in UserRole:
+                if role.value.lower() == value.lower():
+                    return role
+            raise ValueError(f"Invalid UserRole value: {value}")
+
+
+# Models
+class Partner(Base):
+    """
+    Modelo de parceiro
+    Representa empresas parceiras que têm acesso segregado ao sistema
+    """
+    __tablename__ = 'partners'
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False, unique=True, index=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relacionamentos
+    users = relationship("User", back_populates="partner")
+    clients = relationship("Client", back_populates="partner")
+    consultants = relationship("Consultant", back_populates="partner")
+
+    def __repr__(self):
+        return f"<Partner(name='{self.name}')>"
+
+
+class User(Base):
+    """
+    Modelo de usuário para autenticação
+    Armazena credenciais e nível de acesso
+    Usuários podem ser globais (partner_id = None) ou vinculados a um parceiro
+    """
+    __tablename__ = 'users'
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    username = Column(String(100), unique=True, nullable=False, index=True)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    password_hash = Column(String(255), nullable=False)
+    role = Column(UserRoleType(), default=UserRole.USER_PARTNER, nullable=False)
+    partner_id = Column(UUID(as_uuid=True), ForeignKey('partners.id'), nullable=True)  # NULL para admin global
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relacionamentos
+    partner = relationship("Partner", back_populates="users")
+    feedbacks = relationship("ConsultantFeedback", back_populates="user")
+
+    def __repr__(self):
+        return f"<User(username='{self.username}', role='{self.role}', partner_id='{self.partner_id}')>"
+
+
+class Client(Base):
+    """
+    Modelo de cliente
+    Representa empresas/organizações que possuem contratos
+    Cada cliente pertence a um parceiro específico
+    """
+    __tablename__ = 'clients'
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False, index=True)
+    partner_id = Column(UUID(as_uuid=True), ForeignKey('partners.id'), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relacionamentos
+    partner = relationship("Partner", back_populates="clients")
+    contracts = relationship("Contract", back_populates="client", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<Client(name='{self.name}', partner_id='{self.partner_id}')>"
+
+
+class Contract(Base):
+    """
+    Modelo de contrato
+    Armazena informações financeiras e de vigência dos contratos
+    """
+    __tablename__ = 'contracts'
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False, index=True)
+    client_id = Column(UUID(as_uuid=True), ForeignKey('clients.id'), nullable=False)
+    total_value = Column(Numeric(15, 2), nullable=False)
+    billed_value = Column(Numeric(15, 2), default=0, nullable=False)
+    balance = Column(Numeric(15, 2), nullable=False)
+    status = Column(SQLEnum(ContractStatus), default=ContractStatus.ATIVO, nullable=False)
+    end_date = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relacionamentos
+    client = relationship("Client", back_populates="contracts")
+    installments = relationship("Installment", back_populates="contract", cascade="all, delete-orphan")
+    consultants = relationship("Consultant", back_populates="contract", cascade="all, delete-orphan")
+
+    @property
+    def billed_percentage(self):
+        """Calcula o percentual faturado do contrato"""
+        if self.total_value > 0:
+            return float((self.billed_value / self.total_value) * 100)
+        return 0.0
+
+    def __repr__(self):
+        return f"<Contract(name='{self.name}', status='{self.status}')>"
+
+
+class Installment(Base):
+    """
+    Modelo de parcela
+    Representa as parcelas mensais de um contrato
+    """
+    __tablename__ = 'installments'
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    contract_id = Column(UUID(as_uuid=True), ForeignKey('contracts.id'), nullable=False)
+    month = Column(String(20), nullable=False)  # Ex: "Jan/25"
+    value = Column(Numeric(15, 2), nullable=False)
+    billed = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relacionamentos
+    contract = relationship("Contract", back_populates="installments")
+
+    def __repr__(self):
+        return f"<Installment(month='{self.month}', value={self.value}, billed={self.billed})>"
+
+
+class Consultant(Base):
+    """
+    Modelo de consultor
+    Armazena informações dos consultores alocados em contratos
+    Cada consultor pertence a um parceiro específico
+    """
+    __tablename__ = 'consultants'
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(255), nullable=False, index=True)
+    role = Column(String(100), nullable=False)  # Cargo
+    contract_id = Column(UUID(as_uuid=True), ForeignKey('contracts.id'), nullable=False)
+    partner_id = Column(UUID(as_uuid=True), ForeignKey('partners.id'), nullable=False)
+    feedback = Column(Integer, nullable=False)  # Percentual de avaliação (0-100)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relacionamentos
+    contract = relationship("Contract", back_populates="consultants")
+    partner = relationship("Partner", back_populates="consultants")
+    feedback_comments = relationship("ConsultantFeedback", back_populates="consultant", cascade="all, delete-orphan")
+
+    @property
+    def performance_color(self):
+        """Retorna a cor do desempenho baseado no feedback"""
+        if self.feedback >= 90:
+            return "green"
+        elif self.feedback >= 80:
+            return "orange"
+        else:
+            return "red"
+
+    def __repr__(self):
+        return f"<Consultant(name='{self.name}', role='{self.role}', feedback={self.feedback}%)>"
+
+
+class ConsultantFeedback(Base):
+    """
+    Modelo de feedback de consultor
+    Armazena comentários/avaliações textuais sobre consultores
+    Apenas usuários do mesmo parceiro podem criar feedbacks
+    """
+    __tablename__ = 'consultant_feedbacks'
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    consultant_id = Column(UUID(as_uuid=True), ForeignKey('consultants.id'), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    contract_id = Column(UUID(as_uuid=True), ForeignKey('contracts.id'), nullable=True)  # Feedback específico de um contrato
+    comment = Column(String(2000), nullable=False)  # Texto do feedback
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relacionamentos
+    consultant = relationship("Consultant", back_populates="feedback_comments")
+    user = relationship("User", back_populates="feedbacks")
+    contract = relationship("Contract")
+
+    def __repr__(self):
+        return f"<ConsultantFeedback(consultant_id='{self.consultant_id}', user_id='{self.user_id}')>"
+

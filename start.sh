@@ -1,0 +1,73 @@
+#!/bin/bash
+
+# Script rápido para iniciar o projeto
+# Este script inicia o backend e frontend simultaneamente
+
+set -e
+
+echo "=========================================="
+echo "🚀 Iniciando Cursor Contracts Manager"
+echo "=========================================="
+
+# Verifica se está no diretório correto
+if [ ! -f "pyproject.toml" ]; then
+    echo "❌ Erro: Execute este script no diretório raiz do projeto"
+    exit 1
+fi
+
+# Verifica se o banco está rodando
+if ! docker ps | grep -q ccm_postgres; then
+    echo "📦 Iniciando banco de dados..."
+    docker-compose up -d db
+    sleep 5
+fi
+
+# Função para cleanup ao sair
+cleanup() {
+    echo ""
+    echo "🛑 Parando servidores..."
+    kill $BACKEND_PID $FRONTEND_PID 2>/dev/null
+    exit 0
+}
+
+trap cleanup SIGINT SIGTERM
+
+# Inicia o backend em background
+echo "🐍 Iniciando backend..."
+cd /home/w3x7/Desktop/lab/portal-coddfy
+poetry run python -m backend > backend.log 2>&1 &
+BACKEND_PID=$!
+echo "   Backend PID: $BACKEND_PID"
+
+# Aguarda o backend iniciar
+echo "   Aguardando backend iniciar..."
+sleep 5
+
+# Inicia o frontend em background
+echo "⚛️  Iniciando frontend..."
+cd /home/w3x7/Desktop/lab/portal-coddfy/frontend
+npm run dev > ../frontend.log 2>&1 &
+FRONTEND_PID=$!
+echo "   Frontend PID: $FRONTEND_PID"
+
+echo ""
+echo "=========================================="
+echo "✅ Servidores iniciados com sucesso!"
+echo "=========================================="
+echo "🌐 Frontend: http://localhost:5173"
+echo "🔌 Backend:  http://localhost:6543"
+echo ""
+echo "👤 Credenciais padrão:"
+echo "   Usuário: admin"
+echo "   Senha:   admin123"
+echo ""
+echo "📝 Logs:"
+echo "   Backend:  tail -f backend.log"
+echo "   Frontend: tail -f frontend.log"
+echo ""
+echo "Pressione Ctrl+C para parar os servidores"
+echo "=========================================="
+
+# Mantém o script rodando
+wait
+
