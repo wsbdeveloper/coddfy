@@ -7,9 +7,6 @@ echo "🛑 Parando Coddfy Contracts Manager CCM..."
 # Para processos Python (backend)
 pkill -f "python -m backend" && echo "✅ Backend parado"
 
-# Para processos Node (frontend)
-pkill -f "vite" && echo "✅ Frontend parado"
-
 # Para containers Docker
 docker-compose down && echo "✅ Containers Docker parados"
 

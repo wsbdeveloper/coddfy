@@ -50,11 +50,6 @@ poetry.lock
 .DS_Store
 Thumbs.db
 
-# Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/build/
-frontend/.vite/
 
 # Docker
 docker-compose.override.yml

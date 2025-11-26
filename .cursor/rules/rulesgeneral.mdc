@@ -6,3 +6,4 @@ alwaysApply: true
 
 Never import modules inside functions.
 Keep code simple and legitm for anyone people shoulding understand.
+Dont do files md for docs it at least required. 

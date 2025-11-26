@@ -5,8 +5,9 @@ Endpoints CRUD para gestão de clientes
 from pyramid.view import view_config, view_defaults
 from pyramid.response import Response
 from sqlalchemy.exc import IntegrityError
-from backend.models import Client
-from backend.schemas import ClientSchema
+from backend.models import Client, Partner
+from backend.schemas import ClientSchema, ClientCreateSchema
+from backend.auth_helpers import require_authenticated, auto_assign_partner, apply_partner_filter
 import json
 
 
@@ -22,12 +23,18 @@ class ClientViews:
     def list_clients(self):
         """
         GET /api/clients
-        Lista todos os clientes
+        Lista todos os clientes (filtrados por parceiro se necessário)
         
         Returns:
             Lista de clientes
         """
-        clients = self.db.query(Client).order_by(Client.name).all()
+        user = require_authenticated(self.request)
+        query = self.db.query(Client)
+        
+        # Aplica filtro de parceiro se necessário
+        query = apply_partner_filter(query, Client, user)
+        
+        clients = query.order_by(Client.name).all()
         
         schema = ClientSchema(many=True)
         return {'clients': schema.dump(clients)}
@@ -63,17 +70,58 @@ class ClientViews:
         
         Body:
             - name: Nome do cliente
+            - partner_id: ID do parceiro (opcional)
+            - partner: Nome do parceiro (opcional, alternativa ao partner_id)
         
         Returns:
             Dados do cliente criado
         """
         try:
+            user = require_authenticated(self.request)
+            
             # Valida os dados de entrada
-            schema = ClientSchema()
+            schema = ClientCreateSchema()
             data = schema.load(self.request.json_body)
             
+            # Se forneceu nome do parceiro, busca o ID
+            if 'partner' in data and data['partner']:
+                partner = self.db.query(Partner).filter(Partner.name == data['partner']).first()
+                if not partner:
+                    return Response(
+                        json.dumps({'error': f'Parceiro "{data["partner"]}" não encontrado'}).encode('utf-8'),
+                        status=404,
+                        content_type='application/json',
+                        charset='utf-8'
+                    )
+                data['partner_id'] = partner.id
+            
+            # Atribui partner_id automaticamente baseado no usuário se não foi fornecido
+            data = auto_assign_partner(user, data)
+            
+            # Verifica se o partner_id foi definido
+            if not data.get('partner_id'):
+                return Response(
+                    json.dumps({'error': 'partner_id é obrigatório'}).encode('utf-8'),
+                    status=400,
+                    content_type='application/json',
+                    charset='utf-8'
+                )
+            
+            # Verifica se o parceiro existe
+            partner = self.db.query(Partner).filter(Partner.id == data['partner_id']).first()
+            if not partner:
+                return Response(
+                    json.dumps({'error': 'Parceiro não encontrado'}).encode('utf-8'),
+                    status=404,
+                    content_type='application/json',
+                    charset='utf-8'
+                )
+            
             # Cria o cliente
-            client = Client(name=data['name'])
+            client = Client(
+                name=data['name'],
+                partner_id=data['partner_id']
+            )
             
             self.db.add(client)
             self.db.flush()

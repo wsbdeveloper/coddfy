@@ -183,7 +183,8 @@ def auto_assign_partner(user: User, data: dict):
         return data
     
     # Usuários de parceiro sempre usam seu próprio parceiro
-    data['partner_id'] = str(user.partner_id)
+    if user.partner_id:
+        data['partner_id'] = user.partner_id
     return data
 
 

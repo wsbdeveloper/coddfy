@@ -57,23 +57,23 @@ services:
       - ccm_network
 
   # Frontend React (desenvolvimento)
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.frontend
-    container_name: ccm_frontend
-    environment:
-      VITE_API_URL: http://localhost:6543/api
-    ports:
-      - "5173:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: npm run dev -- --host 0.0.0.0
-    depends_on:
-      - backend
-    networks:
-      - ccm_network
+  #frontend:
+  #  build:
+  #    context: ./frontend
+  #    dockerfile: Dockerfile.frontend
+  #  container_name: ccm_frontend
+  #  environment:
+  #    VITE_API_URL: http://localhost:6543/api
+  #  ports:
+  #    - "5173:5173"
+  #  volumes:
+  #    - ./frontend:/app
+  #    - /app/node_modules
+  #  command: npm run dev -- --host 0.0.0.0
+  #  depends_on:
+  #    - backend
+  #  networks:
+  #    - ccm_network
 
 volumes:
   postgres_data:

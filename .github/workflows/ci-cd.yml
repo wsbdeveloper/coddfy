@@ -58,32 +58,32 @@ jobs:
           poetry run mypy backend/ || true  # Continua mesmo se houver erros de tipo
 
   # Job 2: Linting e validação do Frontend (TypeScript/React)
-  frontend-lint:
-    name: Frontend - Linting e Validação
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: 📥 Checkout do código
-        uses: actions/checkout@v4
-      
-      - name: 📦 Configurar Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      
-      - name: 📚 Instalar dependências do frontend
-        working-directory: ./frontend
-        run: npm ci
-      
-      - name: 🔍 Executar ESLint
-        working-directory: ./frontend
-        run: npm run lint
-      
-      - name: 🏗️ Verificar build do frontend
-        working-directory: ./frontend
-        run: npm run build
+  #frontend-lint:
+  #  name: Frontend - Linting e Validação
+  #  runs-on: ubuntu-latest
+  #  
+  #  steps:
+  #    - name: 📥 Checkout do código
+  #      uses: actions/checkout@v4
+  #    
+  #    - name: 📦 Configurar Node.js ${{ env.NODE_VERSION }}
+  #      uses: actions/setup-node@v4
+  #      with:
+  #        node-version: ${{ env.NODE_VERSION }}
+  #        cache: 'npm'
+  #        cache-dependency-path: frontend/package-lock.json
+  #    
+  #    - name: 📚 Instalar dependências do frontend
+  #      working-directory: ./frontend
+  #      run: npm ci
+  #    
+  #    - name: 🔍 Executar ESLint
+  #      working-directory: ./frontend
+  #      run: npm run lint
+  #    
+  #    - name: 🏗️ Verificar build do frontend
+  #      working-directory: ./frontend
+  #      run: npm run build
 
   # Job 3: Testes do Backend (se houver testes)
   backend-tests:
@@ -194,20 +194,4 @@ jobs:
         run: |
           echo "✅ Imagens Docker construídas com sucesso!"
           docker images | grep portal-coddfy
-
-  # Job 5: Deploy (opcional - configure conforme necessário)
-  # deploy:
-  #   name: Deploy
-  #   runs-on: ubuntu-latest
-  #   needs: [docker-build]
-  #   if: github.ref == 'refs/heads/main'
-  #   
-  #   steps:
-  #     - name: 📥 Checkout do código
-  #       uses: actions/checkout@v4
-  #     
-  #     - name: 🚀 Deploy para produção
-  #       run: |
-  #         echo "Configure seu processo de deploy aqui"
-  #         # Exemplo: kubectl apply, docker-compose up, etc.
 

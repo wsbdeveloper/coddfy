@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script rápido para iniciar o projeto
-# Este script inicia o backend e frontend simultaneamente
+# Este script inicia o backend
 
 set -e
 
@@ -25,8 +25,8 @@ fi
 # Função para cleanup ao sair
 cleanup() {
     echo ""
-    echo "🛑 Parando servidores..."
-    kill $BACKEND_PID $FRONTEND_PID 2>/dev/null
+    echo "🛑 Parando servidor..."
+    kill $BACKEND_PID 2>/dev/null
     exit 0
 }
 
@@ -43,19 +43,12 @@ echo "   Backend PID: $BACKEND_PID"
 echo "   Aguardando backend iniciar..."
 sleep 5
 
-# Inicia o frontend em background
-echo "⚛️  Iniciando frontend..."
-cd /home/w3x7/Desktop/lab/portal-coddfy/frontend
-npm run dev > frontend.log 2>&1 &
-FRONTEND_PID=$!
-echo "   Frontend PID: $FRONTEND_PID"
-
 echo ""
 echo "=========================================="
-echo "✅ Servidores iniciados com sucesso!"
+echo "✅ Servidor iniciado com sucesso!"
 echo "=========================================="
-echo "🌐 Frontend: http://localhost:5173"
 echo "🔌 Backend:  http://localhost:6543"
+echo "📚 API Docs: http://localhost:6543/api/docs/swagger"
 echo ""
 echo "👤 Credenciais padrão:"
 echo "   Usuário: admin"
@@ -63,9 +56,8 @@ echo "   Senha:   admin123"
 echo ""
 echo "📝 Logs:"
 echo "   Backend:  tail -f backend/backend.log"
-echo "   Frontend: tail -f frontend/frontend.log"
 echo ""
-echo "Pressione Ctrl+C para parar os servidores"
+echo "Pressione Ctrl+C para parar o servidor"
 echo "=========================================="
 
 # Mantém o script rodando

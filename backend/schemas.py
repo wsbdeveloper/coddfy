@@ -74,7 +74,8 @@ class ClientSchema(Schema):
 class ClientCreateSchema(Schema):
     """Schema para criação de cliente"""
     name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
-    partner_id = fields.UUID(required=True)
+    partner_id = fields.UUID(allow_none=True)  # Opcional, pode ser fornecido via partner (nome)
+    partner = fields.Str(allow_none=True, validate=validate.Length(min=1, max=255))  # Nome do parceiro como alternativa
 
 
 # Installment Schemas

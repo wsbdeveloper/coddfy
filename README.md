@@ -1,6 +1,6 @@
 # Coddfy Contracts Manager CCM
 
-Sistema de gestão de contratos de consultoria com Python (Pyramid) e React (TypeScript).
+Sistema de gestão de contratos de consultoria com Python (Pyramid).
 
 ## Início Rápido
 
@@ -30,25 +30,12 @@ poetry run python -m backend
 ## Deploy
 
 O projeto está configurado para deploy:
-- **Frontend**: [Vercel](https://vercel.com) - Veja [DEPLOY.md](DEPLOY.md)
 - **Backend**: [Render](https://render.com) - Veja [DEPLOY.md](DEPLOY.md)
-
-## 🔀 Separar Repositórios
-
-Para separar este projeto em dois repositórios independentes (backend e frontend), veja:
-
-**[SPLIT_REPOSITORIES.md](SPLIT_REPOSITORIES.md)** - Guia completo de separação
-
-**Script rápido:**
-```bash
-./scripts/split_all.sh
-```
 
 ## 🛠️ Stack
 
 **Backend:** Python/Pyramid, PostgreSQL, JWT, Swagger  
-**Frontend:** React/TypeScript, Tailwind CSS, Vite  
-**DevOps:** Docker, Poetry, npm
+**DevOps:** Docker, Poetry
 
 ## 📦 Estrutura
 
@@ -58,7 +45,6 @@ portal-coddfy/
 │   ├── alembic/      # Migrações BD
 │   ├── scripts/      # Scripts auxiliares
 │   └── ...
-├── frontend/          # Interface React
 └── ...
 ```
 
