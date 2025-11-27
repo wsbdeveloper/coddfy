@@ -113,10 +113,26 @@ class ClientCreateSchema(Schema):
 
 
 # Installment Schemas
+class ContractSimpleSchema(Schema):
+    """Schema simplificado de contrato para uso em nested relationships"""
+    id = fields.UUID(dump_only=True)
+    name = fields.Str(dump_only=True)
+    status = fields.Method("get_status_value", dump_only=True)
+    
+    def get_status_value(self, obj):
+        """Retorna o valor do enum, não a representação"""
+        if hasattr(obj, 'status'):
+            if hasattr(obj.status, 'value'):
+                return obj.status.value
+            return str(obj.status)
+        return None
+
+
 class InstallmentSchema(Schema):
     """Schema para serialização de parcela"""
     id = fields.UUID(dump_only=True)
     contract_id = fields.UUID()
+    contract = fields.Nested(ContractSimpleSchema, dump_only=True)
     month = fields.Str(required=True, validate=validate.Length(max=20))
     value = fields.Decimal(required=True, as_string=True)
     billed = fields.Bool()

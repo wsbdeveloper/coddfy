@@ -6,7 +6,7 @@ from pyramid.view import view_config, view_defaults
 from pyramid.response import Response
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
-from backend.models import Consultant, Contract, Partner
+from backend.models import Consultant, Contract, Partner, Client, UserRole
 from backend.schemas import ConsultantSchema, ConsultantCreateSchema
 from backend.auth_helpers import require_authenticated, auto_assign_partner
 import json
@@ -120,9 +120,9 @@ class ConsultantViews:
             schema = ConsultantCreateSchema()
             data = schema.load(self.request.json_body)
             
-            # Verifica se o contrato existe (com eager loading do client)
+            # Verifica se o contrato existe (com eager loading do client e partner)
             contract = self.db.query(Contract).options(
-                joinedload(Contract.client)
+                joinedload(Contract.client).joinedload(Client.partner)
             ).filter(
                 Contract.id == data['contract_id']
             ).first()
@@ -134,23 +134,50 @@ class ConsultantViews:
                     charset='utf-8'
                 )
             
-            # Atribui partner_id automaticamente baseado no usuário se não foi fornecido
-            data = auto_assign_partner(user, data)
-            
-            # Se ainda não tem partner_id, tenta pegar do contrato (através do cliente)
-            if not data.get('partner_id'):
-                if contract.client and contract.client.partner_id:
-                    data['partner_id'] = contract.client.partner_id
-                else:
+            # O partner_id do consultor deve ser o mesmo do cliente do contrato
+            # Busca o cliente diretamente se necessário
+            if not contract.client:
+                client = self.db.query(Client).filter(Client.id == contract.client_id).first()
+                if not client:
                     return Response(
-                        json.dumps({'error': 'partner_id é obrigatório'}).encode('utf-8'),
-                        status=400,
+                        json.dumps({'error': 'Cliente do contrato não encontrado'}).encode('utf-8'),
+                        status=404,
+                        content_type='application/json',
+                        charset='utf-8'
+                    )
+                partner_id = client.partner_id
+            else:
+                partner_id = contract.client.partner_id
+            
+            # Se ainda não tem partner_id, retorna erro
+            if not partner_id:
+                return Response(
+                    json.dumps({'error': 'O contrato não possui um parceiro associado. Não é possível criar o consultor.'}).encode('utf-8'),
+                    status=400,
+                    content_type='application/json',
+                    charset='utf-8'
+                )
+            
+            # Para usuários não-admin, verifica se o partner_id corresponde ao do usuário
+            if user.role != UserRole.ADMIN_GLOBAL:
+                if user.partner_id != partner_id:
+                    return Response(
+                        json.dumps({'error': 'Você não tem permissão para criar consultores para este parceiro'}).encode('utf-8'),
+                        status=403,
                         content_type='application/json',
                         charset='utf-8'
                     )
             
+            # Se o usuário forneceu um partner_id diferente, valida (apenas para admin global)
+            if data.get('partner_id') and user.role == UserRole.ADMIN_GLOBAL:
+                # Admin global pode especificar um partner_id diferente, mas valida
+                provided_partner_id = data.get('partner_id')
+                if provided_partner_id != partner_id:
+                    # Admin global pode forçar um partner_id diferente, mas avisa
+                    partner_id = provided_partner_id
+            
             # Verifica se o parceiro existe
-            partner = self.db.query(Partner).filter(Partner.id == data['partner_id']).first()
+            partner = self.db.query(Partner).filter(Partner.id == partner_id).first()
             if not partner:
                 return Response(
                     json.dumps({'error': 'Parceiro não encontrado'}).encode('utf-8'),
@@ -159,12 +186,12 @@ class ConsultantViews:
                     charset='utf-8'
                 )
             
-            # Cria o consultor
+            # Cria o consultor (garantindo que partner_id não é None)
             consultant = Consultant(
                 name=data['name'],
                 role=data['role'],
                 contract_id=data['contract_id'],
-                partner_id=data['partner_id'],
+                partner_id=partner_id,  # Usa a variável garantida não-None
                 feedback=data['feedback']
             )
             

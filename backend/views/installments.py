@@ -6,6 +6,7 @@ from pyramid.view import view_config, view_defaults
 from pyramid.response import Response
 from sqlalchemy import func, Integer
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 from backend.models import Installment, Contract, ContractStatus
 from backend.schemas import InstallmentSchema
 import json
@@ -35,7 +36,9 @@ class InstallmentViews:
         Returns:
             Lista de parcelas com dados do contrato
         """
-        query = self.db.query(Installment).join(Contract)
+        query = self.db.query(Installment).options(
+            joinedload(Installment.contract)
+        )
         
         # Filtros opcionais
         contract_id = self.request.params.get('contract_id')
@@ -148,7 +151,9 @@ class InstallmentViews:
             Dados da parcela com informações do contrato
         """
         installment_id = self.request.matchdict['id']
-        installment = self.db.query(Installment).filter(
+        installment = self.db.query(Installment).options(
+            joinedload(Installment.contract)
+        ).filter(
             Installment.id == installment_id
         ).first()
         
@@ -203,6 +208,9 @@ class InstallmentViews:
                 billed=data.get('billed', False)
             )
             
+            # Associa o contrato diretamente para garantir o relacionamento
+            installment.contract = contract
+            
             self.db.add(installment)
             self.db.flush()
             
@@ -244,7 +252,9 @@ class InstallmentViews:
             Dados da parcela atualizada
         """
         installment_id = self.request.matchdict['id']
-        installment = self.db.query(Installment).filter(
+        installment = self.db.query(Installment).options(
+            joinedload(Installment.contract)
+        ).filter(
             Installment.id == installment_id
         ).first()
         
@@ -291,7 +301,9 @@ class InstallmentViews:
             Dados da parcela atualizada
         """
         installment_id = self.request.matchdict['id']
-        installment = self.db.query(Installment).filter(
+        installment = self.db.query(Installment).options(
+            joinedload(Installment.contract)
+        ).filter(
             Installment.id == installment_id
         ).first()
         
