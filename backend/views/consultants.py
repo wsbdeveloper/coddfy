@@ -5,8 +5,10 @@ Endpoints CRUD para gestão de consultores
 from pyramid.view import view_config, view_defaults
 from pyramid.response import Response
 from sqlalchemy import func
-from backend.models import Consultant, Contract
-from backend.schemas import ConsultantSchema
+from sqlalchemy.orm import joinedload
+from backend.models import Consultant, Contract, Partner
+from backend.schemas import ConsultantSchema, ConsultantCreateSchema
+from backend.auth_helpers import require_authenticated, auto_assign_partner
 import json
 
 
@@ -105,18 +107,23 @@ class ConsultantViews:
             - name: Nome do consultor
             - role: Cargo
             - contract_id: ID do contrato
+            - partner_id: ID do parceiro (opcional, será atribuído automaticamente)
             - feedback: Percentual de avaliação (0-100)
         
         Returns:
             Dados do consultor criado
         """
         try:
+            user = require_authenticated(self.request)
+            
             # Valida os dados de entrada
-            schema = ConsultantSchema()
+            schema = ConsultantCreateSchema()
             data = schema.load(self.request.json_body)
             
-            # Verifica se o contrato existe
-            contract = self.db.query(Contract).filter(
+            # Verifica se o contrato existe (com eager loading do client)
+            contract = self.db.query(Contract).options(
+                joinedload(Contract.client)
+            ).filter(
                 Contract.id == data['contract_id']
             ).first()
             if not contract:
@@ -127,11 +134,37 @@ class ConsultantViews:
                     charset='utf-8'
                 )
             
+            # Atribui partner_id automaticamente baseado no usuário se não foi fornecido
+            data = auto_assign_partner(user, data)
+            
+            # Se ainda não tem partner_id, tenta pegar do contrato (através do cliente)
+            if not data.get('partner_id'):
+                if contract.client and contract.client.partner_id:
+                    data['partner_id'] = contract.client.partner_id
+                else:
+                    return Response(
+                        json.dumps({'error': 'partner_id é obrigatório'}).encode('utf-8'),
+                        status=400,
+                        content_type='application/json',
+                        charset='utf-8'
+                    )
+            
+            # Verifica se o parceiro existe
+            partner = self.db.query(Partner).filter(Partner.id == data['partner_id']).first()
+            if not partner:
+                return Response(
+                    json.dumps({'error': 'Parceiro não encontrado'}).encode('utf-8'),
+                    status=404,
+                    content_type='application/json',
+                    charset='utf-8'
+                )
+            
             # Cria o consultor
             consultant = Consultant(
                 name=data['name'],
                 role=data['role'],
                 contract_id=data['contract_id'],
+                partner_id=data['partner_id'],
                 feedback=data['feedback']
             )
             

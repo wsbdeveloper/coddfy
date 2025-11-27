@@ -3,7 +3,41 @@ Schemas de validação usando Marshmallow
 Define a estrutura de entrada/saída da API
 """
 from marshmallow import Schema, fields, validate, validates, ValidationError
+from marshmallow.fields import DateTime
+from datetime import datetime
 from backend.models import ContractStatus, UserRole
+
+
+class FlexibleDateTime(fields.DateTime):
+    """
+    Campo DateTime que aceita múltiplos formatos:
+    - ISO format (padrão)
+    - dd/mm/yyyy
+    - dd/mm/yyyy HH:MM:SS
+    """
+    def _deserialize(self, value, attr, data, **kwargs):
+        if isinstance(value, datetime):
+            return value
+        
+        if isinstance(value, str):
+            # Tenta formato dd/mm/yyyy
+            try:
+                # Formato dd/mm/yyyy
+                if len(value) == 10 and value.count('/') == 2:
+                    return datetime.strptime(value, '%d/%m/%Y')
+                # Formato dd/mm/yyyy HH:MM:SS
+                elif len(value) > 10 and value.count('/') == 2:
+                    return datetime.strptime(value, '%d/%m/%Y %H:%M:%S')
+            except ValueError:
+                pass
+            
+            # Tenta formato ISO (padrão)
+            try:
+                return super()._deserialize(value, attr, data, **kwargs)
+            except ValidationError:
+                raise ValidationError(f'Formato de data inválido. Use dd/mm/yyyy ou formato ISO.')
+        
+        return super()._deserialize(value, attr, data, **kwargs)
 
 
 # Partner Schemas
@@ -132,7 +166,7 @@ class ConsultantCreateSchema(Schema):
     name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
     role = fields.Str(required=True, validate=validate.Length(min=1, max=100))
     contract_id = fields.UUID(required=True)
-    partner_id = fields.UUID(required=True)
+    partner_id = fields.UUID(allow_none=True)  # Opcional, será atribuído automaticamente
     feedback = fields.Int(required=True, validate=validate.Range(min=0, max=100))
 
 
@@ -163,7 +197,7 @@ class ContractCreateSchema(Schema):
     client_id = fields.UUID(required=True)
     total_value = fields.Decimal(required=True, as_string=True)
     status = fields.Str(validate=validate.OneOf([s.value for s in ContractStatus]))
-    end_date = fields.DateTime(required=True)
+    end_date = FlexibleDateTime(required=True)
     
     @validates('total_value')
     def validate_total_value(self, value):

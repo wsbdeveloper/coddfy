@@ -5,6 +5,7 @@ Endpoints CRUD para gestão de clientes
 from pyramid.view import view_config, view_defaults
 from pyramid.response import Response
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 from backend.models import Client, Partner
 from backend.schemas import ClientSchema, ClientCreateSchema
 from backend.auth_helpers import require_authenticated, auto_assign_partner, apply_partner_filter
@@ -26,10 +27,10 @@ class ClientViews:
         Lista todos os clientes (filtrados por parceiro se necessário)
         
         Returns:
-            Lista de clientes
+            Lista de clientes com informações do parceiro
         """
         user = require_authenticated(self.request)
-        query = self.db.query(Client)
+        query = self.db.query(Client).options(joinedload(Client.partner))
         
         # Aplica filtro de parceiro se necessário
         query = apply_partner_filter(query, Client, user)
@@ -46,10 +47,12 @@ class ClientViews:
         Retorna detalhes de um cliente específico
         
         Returns:
-            Dados do cliente
+            Dados do cliente com informações do parceiro
         """
         client_id = self.request.matchdict['id']
-        client = self.db.query(Client).filter(Client.id == client_id).first()
+        client = self.db.query(Client).options(joinedload(Client.partner)).filter(
+            Client.id == client_id
+        ).first()
         
         if not client:
             return Response(
