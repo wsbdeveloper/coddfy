@@ -110,7 +110,8 @@ def create_feedback(request):
             consultant_id=data['consultant_id'],
             user_id=user.id,
             contract_id=data.get('contract_id'),
-            comment=data['comment']
+            comment=data['comment'],
+            rating=data.get('rating')
         )
         DBSession.add(feedback)
         DBSession.flush()
@@ -209,8 +210,10 @@ def update_feedback(request):
         schema = ConsultantFeedbackCreateSchema()
         data = schema.load(request.json_body)
         
-        # Atualizar apenas o comentário (não pode mudar consultor/contrato)
+        # Atualizar comentário e rating (não pode mudar consultor/contrato)
         feedback.comment = data['comment']
+        if 'rating' in data:
+            feedback.rating = data['rating']
         DBSession.flush()
         
         # Serializar resposta
@@ -283,6 +286,9 @@ def delete_feedback(request):
             content_type='application/json',
             charset='utf-8'
         )
+
+
+
 
 
 

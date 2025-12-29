@@ -192,7 +192,7 @@ class ConsultantViews:
                 role=data['role'],
                 contract_id=data['contract_id'],
                 partner_id=partner_id,  # Usa a variável garantida não-None
-                feedback=data['feedback']
+                photo_url=data.get('photo_url')
             )
             
             self.db.add(consultant)
@@ -251,11 +251,8 @@ class ConsultantViews:
                 consultant.name = data['name']
             if 'role' in data:
                 consultant.role = data['role']
-            if 'feedback' in data:
-                if 0 <= data['feedback'] <= 100:
-                    consultant.feedback = data['feedback']
-                else:
-                    raise ValueError('Feedback deve estar entre 0 e 100')
+            if 'photo_url' in data:
+                consultant.photo_url = data['photo_url']
             
             self.db.flush()
             

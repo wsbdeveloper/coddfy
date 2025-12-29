@@ -136,6 +136,11 @@ class InstallmentSchema(Schema):
     month = fields.Str(required=True, validate=validate.Length(max=20))
     value = fields.Decimal(required=True, as_string=True)
     billed = fields.Bool()
+    invoice_number = fields.Str(allow_none=True, validate=validate.Length(max=100))
+    billing_date = FlexibleDateTime(allow_none=True)
+    payment_term = fields.Int(allow_none=True)
+    expected_payment_date = FlexibleDateTime(allow_none=True)
+    payment_date = FlexibleDateTime(allow_none=True)
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
 
@@ -148,6 +153,7 @@ class ConsultantFeedbackSchema(Schema):
     user_id = fields.UUID(dump_only=True)
     contract_id = fields.UUID(allow_none=True)
     comment = fields.Str(required=True, validate=validate.Length(min=1, max=2000))
+    rating = fields.Int(allow_none=True, validate=validate.Range(min=0, max=100))
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
     # Nested relationships
@@ -159,6 +165,7 @@ class ConsultantFeedbackCreateSchema(Schema):
     consultant_id = fields.UUID(required=True)
     contract_id = fields.UUID(allow_none=True)
     comment = fields.Str(required=True, validate=validate.Length(min=1, max=2000))
+    rating = fields.Int(allow_none=True, validate=validate.Range(min=0, max=100))
 
 
 # Consultant Schemas
@@ -170,7 +177,8 @@ class ConsultantSchema(Schema):
     contract_id = fields.UUID()
     partner_id = fields.UUID(required=True)
     partner = fields.Nested(PartnerSchema, dump_only=True)
-    feedback = fields.Int(required=True, validate=validate.Range(min=0, max=100))
+    photo_url = fields.Str(allow_none=True, dump_only=True)
+    feedback = fields.Float(dump_only=True)  # Agora é calculado como média
     feedback_comments = fields.Nested(ConsultantFeedbackSchema, many=True, dump_only=True)
     performance_color = fields.Str(dump_only=True)
     created_at = fields.DateTime(dump_only=True)
@@ -183,7 +191,7 @@ class ConsultantCreateSchema(Schema):
     role = fields.Str(required=True, validate=validate.Length(min=1, max=100))
     contract_id = fields.UUID(required=True)
     partner_id = fields.UUID(allow_none=True)  # Opcional, será atribuído automaticamente
-    feedback = fields.Int(required=True, validate=validate.Range(min=0, max=100))
+    photo_url = fields.Str(allow_none=True, validate=validate.Length(max=500))
 
 
 # Contract Schemas
@@ -205,6 +213,7 @@ class ContractSchema(Schema):
     client = fields.Nested(ClientSchema, dump_only=True)
     installments = fields.Nested(InstallmentSchema, many=True, dump_only=True)
     consultants = fields.Nested(ConsultantSchema, many=True, dump_only=True)
+    timesheets = fields.Nested('TimesheetSchema', many=True, dump_only=True)
 
 
 class ContractCreateSchema(Schema):
@@ -242,4 +251,29 @@ class ContractExpirySchema(Schema):
     end_date = fields.DateTime()
     days_remaining = fields.Int()
     status = fields.Str()
+
+
+# Timesheet Schemas
+class TimesheetSchema(Schema):
+    """Schema para serialização de timesheet"""
+    id = fields.UUID(dump_only=True)
+    contract_id = fields.UUID(required=True)
+    installment_id = fields.UUID(allow_none=True)
+    timesheet_file_url = fields.Str(allow_none=True, validate=validate.Length(max=500))
+    hours_consumed = fields.Decimal(allow_none=True, as_string=True)
+    approver_name = fields.Str(allow_none=True, validate=validate.Length(max=255))
+    approval_date = FlexibleDateTime(allow_none=True)
+    created_at = fields.DateTime(dump_only=True)
+    updated_at = fields.DateTime(dump_only=True)
+    contract = fields.Nested(ContractSimpleSchema, dump_only=True)
+
+
+class TimesheetCreateSchema(Schema):
+    """Schema para criação de timesheet"""
+    contract_id = fields.UUID(required=True)
+    installment_id = fields.UUID(allow_none=True)
+    timesheet_file_url = fields.Str(allow_none=True, validate=validate.Length(max=500))
+    hours_consumed = fields.Decimal(allow_none=True, as_string=True)
+    approver_name = fields.Str(allow_none=True, validate=validate.Length(max=255))
+    approval_date = FlexibleDateTime(allow_none=True)
 

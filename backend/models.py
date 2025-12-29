@@ -150,6 +150,7 @@ class Contract(Base):
     client = relationship("Client", back_populates="contracts")
     installments = relationship("Installment", back_populates="contract", cascade="all, delete-orphan")
     consultants = relationship("Consultant", back_populates="contract", cascade="all, delete-orphan")
+    timesheets = relationship("Timesheet", back_populates="contract", cascade="all, delete-orphan")
 
     @property
     def billed_percentage(self):
@@ -174,6 +175,14 @@ class Installment(Base):
     month = Column(String(20), nullable=False)  # Ex: "Jan/25"
     value = Column(Numeric(15, 2), nullable=False)
     billed = Column(Boolean, default=False, nullable=False)
+    
+    # Campos de Nota Fiscal
+    invoice_number = Column(String(100), nullable=True)  # Número da nota fiscal
+    billing_date = Column(DateTime, nullable=True)  # Data de faturamento
+    payment_term = Column(Integer, nullable=True)  # Prazo de pagamento (em dias)
+    expected_payment_date = Column(DateTime, nullable=True)  # Data prevista do pagamento
+    payment_date = Column(DateTime, nullable=True)  # Data do pagamento
+    
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
@@ -197,7 +206,7 @@ class Consultant(Base):
     role = Column(String(100), nullable=False)  # Cargo
     contract_id = Column(UUID(as_uuid=True), ForeignKey('contracts.id'), nullable=False)
     partner_id = Column(UUID(as_uuid=True), ForeignKey('partners.id'), nullable=False)
-    feedback = Column(Integer, nullable=False)  # Percentual de avaliação (0-100)
+    photo_url = Column(String(500), nullable=True)  # URL da foto do consultor
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
@@ -207,11 +216,26 @@ class Consultant(Base):
     feedback_comments = relationship("ConsultantFeedback", back_populates="consultant", cascade="all, delete-orphan")
 
     @property
+    def feedback(self):
+        """Calcula o feedback médio baseado nos feedbacks numéricos"""
+        if not self.feedback_comments:
+            return 0
+        
+        # Filtra apenas feedbacks com rating
+        ratings = [fb.rating for fb in self.feedback_comments if fb.rating is not None]
+        
+        if not ratings:
+            return 0
+        
+        return round(sum(ratings) / len(ratings), 2)
+
+    @property
     def performance_color(self):
         """Retorna a cor do desempenho baseado no feedback"""
-        if self.feedback >= 90:
+        feedback_value = self.feedback
+        if feedback_value >= 90:
             return "green"
-        elif self.feedback >= 80:
+        elif feedback_value >= 80:
             return "orange"
         else:
             return "red"
@@ -223,7 +247,7 @@ class Consultant(Base):
 class ConsultantFeedback(Base):
     """
     Modelo de feedback de consultor
-    Armazena comentários/avaliações textuais sobre consultores
+    Armazena comentários/avaliações textuais e numéricas sobre consultores
     Apenas usuários do mesmo parceiro podem criar feedbacks
     """
     __tablename__ = 'consultant_feedbacks'
@@ -233,6 +257,7 @@ class ConsultantFeedback(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
     contract_id = Column(UUID(as_uuid=True), ForeignKey('contracts.id'), nullable=True)  # Feedback específico de um contrato
     comment = Column(String(2000), nullable=False)  # Texto do feedback
+    rating = Column(Integer, nullable=True)  # Nota numérica (0-100) para cálculo da média
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
@@ -243,4 +268,29 @@ class ConsultantFeedback(Base):
 
     def __repr__(self):
         return f"<ConsultantFeedback(consultant_id='{self.consultant_id}', user_id='{self.user_id}')>"
+
+
+class Timesheet(Base):
+    """
+    Modelo de Timesheet/Histórico de Faturamentos
+    Representa o histórico de faturamentos de um contrato com timesheet validado
+    """
+    __tablename__ = 'timesheets'
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    contract_id = Column(UUID(as_uuid=True), ForeignKey('contracts.id'), nullable=False)
+    installment_id = Column(UUID(as_uuid=True), ForeignKey('installments.id'), nullable=True)  # Relacionado a uma parcela específica
+    timesheet_file_url = Column(String(500), nullable=True)  # URL do arquivo Excel do timesheet
+    hours_consumed = Column(Numeric(10, 2), nullable=True)  # Número de horas consumidas
+    approver_name = Column(String(255), nullable=True)  # Nome do aprovador
+    approval_date = Column(DateTime, nullable=True)  # Data da aprovação
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    # Relacionamentos
+    contract = relationship("Contract", back_populates="timesheets")
+    installment = relationship("Installment")
+
+    def __repr__(self):
+        return f"<Timesheet(contract_id='{self.contract_id}', hours_consumed={self.hours_consumed})>"
 

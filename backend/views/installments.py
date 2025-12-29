@@ -205,7 +205,12 @@ class InstallmentViews:
                 contract_id=data['contract_id'],
                 month=data['month'],
                 value=data['value'],
-                billed=data.get('billed', False)
+                billed=data.get('billed', False),
+                invoice_number=data.get('invoice_number'),
+                billing_date=data.get('billing_date'),
+                payment_term=data.get('payment_term'),
+                expected_payment_date=data.get('expected_payment_date'),
+                payment_date=data.get('payment_date')
             )
             
             # Associa o contrato diretamente para garantir o relacionamento
@@ -325,6 +330,16 @@ class InstallmentViews:
                 installment.value = data['value']
             if 'billed' in data:
                 installment.billed = data['billed']
+            if 'invoice_number' in data:
+                installment.invoice_number = data['invoice_number']
+            if 'billing_date' in data:
+                installment.billing_date = data['billing_date']
+            if 'payment_term' in data:
+                installment.payment_term = data['payment_term']
+            if 'expected_payment_date' in data:
+                installment.expected_payment_date = data['expected_payment_date']
+            if 'payment_date' in data:
+                installment.payment_date = data['payment_date']
             
             self.db.flush()
             
