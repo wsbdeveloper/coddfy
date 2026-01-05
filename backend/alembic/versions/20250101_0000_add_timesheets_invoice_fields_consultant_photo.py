@@ -9,7 +9,6 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID
 
 
 # revision identifiers, used by Alembic.
@@ -28,7 +27,6 @@ def upgrade() -> None:
     - Tabela Timesheet para histórico de faturamentos
     - Remove campo feedback do Consultant (agora é calculado)
     """
-    from sqlalchemy.dialects.postgresql import UUID
     import uuid
     from datetime import datetime
     
@@ -52,9 +50,9 @@ def upgrade() -> None:
     
     # 5. Criar tabela de timesheets
     op.create_table('timesheets',
-        sa.Column('id', UUID(as_uuid=True), nullable=False),
-        sa.Column('contract_id', UUID(as_uuid=True), nullable=False),
-        sa.Column('installment_id', UUID(as_uuid=True), nullable=True),
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('contract_id', sa.UUID(), nullable=False),
+        sa.Column('installment_id', sa.UUID(), nullable=True),
         sa.Column('timesheet_file_url', sa.String(length=500), nullable=True),
         sa.Column('hours_consumed', sa.Numeric(10, 2), nullable=True),
         sa.Column('approver_name', sa.String(length=255), nullable=True),
