@@ -36,7 +36,7 @@ def dashboard_view(request):
     allocated_consultants = db.query(func.count(Consultant.id)).scalar() or 0
     
     # Média de feedback
-    average_feedback_result = db.query(func.avg(Consultant.feedback)).scalar()
+    average_feedback_result = db.query(func.avg(Consultant.feedback_score)).scalar()
     average_feedback = float(average_feedback_result) if average_feedback_result else 0.0
     
     # Valores financeiros totais
