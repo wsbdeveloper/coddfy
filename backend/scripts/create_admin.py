@@ -43,12 +43,13 @@ def create_admin():
         # Cria o hash da senha
         password_hash = AuthService.hash_password('admin123')
         
-        # Cria o usuário admin
+        # Cria o usuário admin (admin_global)
         admin_user = User(
             username='admin',
             email='admin@coddfy.com',
             password_hash=password_hash,
-            role=UserRole.ADMIN,
+            role=UserRole.ADMIN_GLOBAL,
+            partner_id=None,  # Admin global não tem parceiro
             is_active=True
         )
         
@@ -60,7 +61,7 @@ def create_admin():
         print("   Username: admin")
         print("   Password: admin123")
         print("   Email: admin@coddfy.com")
-        print("   Role: ADMIN")
+        print("   Role: ADMIN_GLOBAL")
         print("")
         print("⚠️  IMPORTANTE: Altere a senha padrão após o primeiro login!")
         print("=" * 80)

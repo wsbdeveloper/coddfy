@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from backend.models import Client, Contract, Consultant, Installment, ContractStatus
+from backend.models import Client, Contract, Consultant, Installment, ContractStatus, Partner, ConsultantFeedback, User
 from backend.config import config
 
 
@@ -29,19 +29,37 @@ def seed_data():
     session = Session()
     
     try:
+        # Busca ou cria parceiro padrão
+        print("🤝 Verificando parceiro padrão...")
+        default_partner = session.query(Partner).filter_by(name="Parceiro Padrão").first()
+        if not default_partner:
+            default_partner = Partner(name="Parceiro Padrão")
+            session.add(default_partner)
+            session.flush()
+            print("✓ Parceiro padrão criado")
+        else:
+            print("✓ Parceiro padrão encontrado")
+        
+        # Busca usuário padrão para criar feedbacks
+        default_user = session.query(User).first()
+        if not default_user:
+            print("⚠️  Nenhum usuário encontrado. Execute create_admin.py primeiro!")
+            return
+        
         # Limpa dados existentes (cuidado em produção!)
         print("🗑️  Limpando dados existentes...")
+        session.query(ConsultantFeedback).delete()
         session.query(Consultant).delete()
         session.query(Installment).delete()
         session.query(Contract).delete()
         session.query(Client).delete()
         session.commit()
         
-        # Cria clientes
+        # Cria clientes vinculados ao parceiro padrão
         print("👥 Criando clientes...")
-        client1 = Client(name="Tech Solutions Ltda")
-        client2 = Client(name="Inovação Digital S.A.")
-        client3 = Client(name="Consultoria Estratégica")
+        client1 = Client(name="Tech Solutions Ltda", partner_id=default_partner.id)
+        client2 = Client(name="Inovação Digital S.A.", partner_id=default_partner.id)
+        client3 = Client(name="Consultoria Estratégica", partner_id=default_partner.id)
         
         session.add_all([client1, client2, client3])
         session.flush()
@@ -93,23 +111,47 @@ def seed_data():
             )
             session.add(installment)
         
-        # Cria consultores
+        # Cria consultores (sem feedback, será criado via feedbacks)
         print("👨‍💼 Criando consultores...")
         consultants_data = [
             # Contrato 1
-            {"name": "João Silva", "role": "Tech Lead", "contract_id": contract1.id, "feedback": 95},
-            {"name": "Maria Santos", "role": "Desenvolvedor Senior", "contract_id": contract1.id, "feedback": 92},
-            {"name": "Pedro Oliveira", "role": "Desenvolvedor Pleno", "contract_id": contract1.id, "feedback": 88},
+            {"name": "João Silva", "role": "Tech Lead", "contract_id": contract1.id, "partner_id": default_partner.id, "photo_url": None},
+            {"name": "Maria Santos", "role": "Desenvolvedor Senior", "contract_id": contract1.id, "partner_id": default_partner.id, "photo_url": None},
+            {"name": "Pedro Oliveira", "role": "Desenvolvedor Pleno", "contract_id": contract1.id, "partner_id": default_partner.id, "photo_url": None},
             # Contrato 2
-            {"name": "Ana Costa", "role": "Arquiteta de Soluções", "contract_id": contract2.id, "feedback": 96},
-            {"name": "Carlos Mendes", "role": "Engenheiro DevOps", "contract_id": contract2.id, "feedback": 90},
+            {"name": "Ana Costa", "role": "Arquiteta de Soluções", "contract_id": contract2.id, "partner_id": default_partner.id, "photo_url": None},
+            {"name": "Carlos Mendes", "role": "Engenheiro DevOps", "contract_id": contract2.id, "partner_id": default_partner.id, "photo_url": None},
             # Contrato 3
-            {"name": "Beatriz Lima", "role": "Consultora DevOps", "contract_id": contract3.id, "feedback": 85},
+            {"name": "Beatriz Lima", "role": "Consultora DevOps", "contract_id": contract3.id, "partner_id": default_partner.id, "photo_url": None},
         ]
         
+        feedbacks_map = {
+            "João Silva": 95,
+            "Maria Santos": 92,
+            "Pedro Oliveira": 88,
+            "Ana Costa": 96,
+            "Carlos Mendes": 90,
+            "Beatriz Lima": 85,
+        }
+        
+        consultants = []
         for data in consultants_data:
             consultant = Consultant(**data)
             session.add(consultant)
+            session.flush()
+            consultants.append((consultant, feedbacks_map[data["name"]]))
+        
+        # Cria feedbacks com ratings para os consultores
+        print("💬 Criando feedbacks com ratings...")
+        for consultant, rating in consultants:
+            feedback = ConsultantFeedback(
+                consultant_id=consultant.id,
+                user_id=default_user.id,
+                contract_id=consultant.contract_id,
+                comment=f"Feedback inicial para {consultant.name}",
+                rating=rating
+            )
+            session.add(feedback)
         
         # Commit de todas as mudanças
         session.commit()

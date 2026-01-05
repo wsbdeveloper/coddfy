@@ -163,10 +163,25 @@ def seed_partners():
                         role="Desenvolvedor Senior",
                         contract_id=contract.id,
                         partner_id=robbin_partner.id,
-                        feedback=85
+                        photo_url=None
                     )
                     session.add(consultant)
+                    session.flush()
                     print(f"    ✓ Consultor criado: {consultant.name}")
+                    
+                    # Criar feedback com rating para o consultor
+                    from backend.models import ConsultantFeedback
+                    admin_user = session.query(User).filter_by(username="admin_robbin").first()
+                    if admin_user:
+                        feedback = ConsultantFeedback(
+                            consultant_id=consultant.id,
+                            user_id=admin_user.id,
+                            contract_id=contract.id,
+                            comment=f"Feedback inicial para {consultant.name}",
+                            rating=85
+                        )
+                        session.add(feedback)
+                        print(f"      ✓ Feedback criado com rating 85")
                 else:
                     print(f"  Cliente '{client_data['name']}' já existe")
         
