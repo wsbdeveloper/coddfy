@@ -12,6 +12,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from backend.database import Base
 import enum
+from sqlalchemy.types import TypeDecorator, String
 
 
 # Enums
@@ -30,31 +31,22 @@ class UserRole(str, enum.Enum):
 
 
 class UserRoleType(TypeDecorator):
-    """Tipo customizado para converter entre enum Python e valores do banco"""
-    impl = String
-    cache_ok = True
-    
-    def __init__(self):
-        super().__init__(length=50)
-    
+    impl = String(50)
+
     def process_bind_param(self, value, dialect):
-        """Converte enum Python para valor do banco"""
-        if isinstance(value, UserRole):
-            return value.value
-        return value
-    
-    def process_result_value(self, value, dialect):
-        """Converte valor do banco para enum Python"""
         if value is None:
             return None
+        # Armazena como string (nome do enum ou valor)
+        return value.name if hasattr(value, "name") else str(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        # Tenta converter para enum UserRole, caso exista; caso contrário retorna string
         try:
-            return UserRole(value)
-        except ValueError:
-            # Tenta encontrar por valor (case insensitive)
-            for role in UserRole:
-                if role.value.lower() == value.lower():
-                    return role
-            raise ValueError(f"Invalid UserRole value: {value}")
+            return UserRole[value]
+        except Exception:
+            return value
 
 
 # Models
@@ -68,6 +60,8 @@ class Partner(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False, unique=True, index=True)
     is_active = Column(Boolean, default=True, nullable=False)
+    is_strategic = Column(Boolean, default=False, nullable=False)  # Estratégico ou não
+    status = Column(String(50), default='active', nullable=False)   # Status livre (ex: active/inactive)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
@@ -119,6 +113,8 @@ class Client(Base):
     partner_id = Column(UUID(as_uuid=True), ForeignKey('partners.id'), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    cnpj = Column(String(20), nullable=True, index=True)        # CNPJ
+    razao_social = Column(String(255), nullable=True)           # Razão social
     
     # Relacionamentos
     partner = relationship("Partner", back_populates="clients")
@@ -280,17 +276,17 @@ class Timesheet(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     contract_id = Column(UUID(as_uuid=True), ForeignKey('contracts.id'), nullable=False)
-    installment_id = Column(UUID(as_uuid=True), ForeignKey('installments.id'), nullable=True)  # Relacionado a uma parcela específica
-    timesheet_file_url = Column(String(500), nullable=True)  # URL do arquivo Excel do timesheet
-    hours_consumed = Column(Numeric(10, 2), nullable=True)  # Número de horas consumidas
-    approver_name = Column(String(255), nullable=True)  # Nome do aprovador
-    approval_date = Column(DateTime, nullable=True)  # Data da aprovação
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-    
+    consultant_id = Column(UUID(as_uuid=True), ForeignKey('consultants.id'), nullable=True)
+    file_url = Column(String(1000), nullable=True)               # anexo (caminho/URL do excel)
+    hours = Column(Numeric(10, 2), nullable=False, default=0)    # número de horas consumidas
+    approver = Column(String(255), nullable=True)                # nome do aprovador
+    approval_date = Column(DateTime, nullable=True)              # data da aprovação
+    approved = Column(Boolean, default=False, nullable=False)
+    uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
     # Relacionamentos
     contract = relationship("Contract", back_populates="timesheets")
-    installment = relationship("Installment")
+    consultant = relationship("Consultant", back_populates="timesheets")
 
     def __repr__(self):
         return f"<Timesheet(contract_id='{self.contract_id}', hours_consumed={self.hours_consumed})>"
