@@ -206,6 +206,7 @@ class Consultant(Base):
     role = Column(String(100), nullable=False)  # Cargo
     contract_id = Column(UUID(as_uuid=True), ForeignKey('contracts.id'), nullable=False)
     partner_id = Column(UUID(as_uuid=True), ForeignKey('partners.id'), nullable=False)
+    feedback_score = Column(Numeric(5, 2), nullable=True, default=0)
     photo_url = Column(String(500), nullable=True)  # URL da foto do consultor
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
