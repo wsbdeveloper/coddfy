@@ -211,6 +211,7 @@ class Consultant(Base):
     contract = relationship("Contract", back_populates="consultants")
     partner = relationship("Partner", back_populates="consultants")
     feedback_comments = relationship("ConsultantFeedback", back_populates="consultant", cascade="all, delete-orphan")
+    timesheets = relationship("Timesheet", back_populates="consultant", cascade="all, delete-orphan")  # <-- ADICIONADO
 
     @property
     def feedback(self):
@@ -269,8 +270,7 @@ class ConsultantFeedback(Base):
 
 class Timesheet(Base):
     """
-    Modelo de Timesheet/Histórico de Faturamentos
-    Representa o histórico de faturamentos de um contrato com timesheet validado
+    Timesheet (anexo) validado pelo cliente
     """
     __tablename__ = 'timesheets'
     
