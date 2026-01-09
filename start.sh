@@ -16,11 +16,11 @@ if [ ! -f "pyproject.toml" ]; then
 fi
 
 # Verifica se o banco está rodando
-if ! docker ps | grep -q ccm_postgres; then
-    echo "📦 Iniciando banco de dados..."
-    docker-compose up -d db
-    sleep 5
-fi
+#if ! docker ps | grep -q ccm_postgres; then
+#    echo "📦 Iniciando banco de dados..."
+#    docker-compose up -d db
+#    sleep 5
+#fi
 
 # Função para cleanup ao sair
 cleanup() {
