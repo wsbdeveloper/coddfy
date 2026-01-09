@@ -61,7 +61,7 @@ class AuthService:
             'user_id': str(user.id),
             'username': user.username,
             'email': user.email,
-            'role': user.role.value,
+            'role': user.role,
             'exp': expiration,
             'iat': datetime.utcnow()
         }

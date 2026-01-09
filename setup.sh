@@ -23,14 +23,14 @@ echo ""
 echo "📊 Aplicando migrações no banco de dados..."
 cd backend && poetry run alembic -c alembic.ini upgrade head && cd ..
 
-echo ""
-echo "👤 Criando usuário admin padrão..."
-poetry run python backend/scripts/create_admin.py
+#echo ""
+#echo "👤 Criando usuário admin padrão..."
+#poetry run python backend/scripts/create_admin.py
 
-echo ""
-echo "🌱 Populando banco com dados de exemplo..."
-poetry run python backend/scripts/seed_partners.py
-poetry run python backend/scripts/seed_data.py
+#echo ""
+#echo "🌱 Populando banco com dados de exemplo..."
+#poetry run python backend/scripts/seed_partners.py
+#poetry run python backend/scripts/seed_data.py
 
 echo ""
 echo "=========================================="
