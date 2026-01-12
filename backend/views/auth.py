@@ -37,7 +37,6 @@ class AuthViews:
             # Valida os dados de entrada
             schema = UserLoginSchema()
             data = schema.load(self.request.json_body)
-            breakpoint()
             # Busca o usuário no banco
             user = self.db.query(User).filter(
                 User.username == data['username']
