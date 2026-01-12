@@ -139,6 +139,10 @@ class Contract(Base):
     balance = Column(Numeric(15, 2), nullable=False)
     status = Column(SQLEnum(ContractStatus), default=ContractStatus.ATIVO, nullable=False)
     end_date = Column(DateTime, nullable=False)
+
+    responsible_name = Column(String(255), nullable=True)            
+    payment_method = Column(String(50), nullable=False, default='parcelado')  # 'a_vista' | 'parcelado' ou usar Enum
+
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
