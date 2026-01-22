@@ -50,6 +50,10 @@ def includeme(config):
     # Rotas de parceiros (apenas admin global)
     config.add_route('partners', '/api/partners')
     config.add_route('partner', '/api/partners/{id}')
+
+    config.add_route('consultant_feedback', '/api/consultants/{id}/feedback')
+    # (opcional) adiciona alias caso algum view use 'feedback'
+    config.add_route('feedback', '/api/consultants/{id}/feedback')
     
     # Rotas de feedbacks de consultores
     config.add_route('feedbacks_list', '/api/feedbacks')
