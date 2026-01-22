@@ -208,6 +208,9 @@ class ContractSchema(Schema):
     billed_percentage = fields.Float(dump_only=True)
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
+
+    payment_method = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+    responsible_name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
     
     # Nested relationships
     client = fields.Nested(ClientSchema, dump_only=True)
@@ -219,6 +222,8 @@ class ContractSchema(Schema):
 class ContractCreateSchema(Schema):
     """Schema para criação de contrato"""
     name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+    payment_method = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+    responsible_name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
     client_id = fields.UUID(required=True)
     total_value = fields.Decimal(required=True, as_string=True)
     status = fields.Str(validate=validate.OneOf([s.value for s in ContractStatus]))

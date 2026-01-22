@@ -1,181 +1,123 @@
-# Product Requirements Document (PRD)
+######################################## 
+############ FUNCIONALIDADES ############ 
+######################################## 
 
-## Nome do Produto
-**Coddfy Contracts Manager CCM**
+############ VISÃO CLIENTE ############ 
 
----
+Dashboard:
+- Quando clicar em Contratos Ativos, ir para página de contratos;
+- Quando clicar em Consultores Alocados, ir para a página de consultores;
+- Quando clicar em Resumo Financeiro, ir para a página de Faturamento;
 
-## Visão Geral
-O **Coddfy Contracts Manager CCM** é uma plataforma web para **gestão de contratos de consultoria**, com controle financeiro, vigência e desempenho técnico dos consultores alocados.
+Contratos:
+- Não deve aparecer a função de “+ Novo Contrato” para o cliente;
+- Quando o cliente clicar sob o nome de um dos contratos, seja expandida uma tela abaixo, com a lista do histórico de faturamentos, e que neste, possua o anexo do Timesheet que foi validado com o cliente e algumas infos:
+    - Timesheet (excel anexo);
+    - Número de horas consumidas;
+    - Aprovador: nome do aprovador;
+    - Data da aprovação;
 
-O sistema fornece:
-- Painel geral com indicadores de contratos e consultores;
-- Controle financeiro com valores totais, faturados e saldos;
-- Feedback de performance por consultor;
-- Acompanhamento de vigência e status dos contratos.
+Consultores:
+- Não deve aparecer a função de “+ Novo Consultor” para o cliente;
+- Cliente ao clicar sob o nome do consultor, ele possa criar um feedback, e que possa ver o histórico de feedbacks que ele criou, e que o percentual, seja uma média destas notas;
+- Tenha o lugar para colocar a foto do consultor, pequena, mas que tenha;
 
----
+Faturamento:
+- Quando o cliente clicar sob o título de um dos contratos, expandir abaixo, a lista de faturas emitidas, pendente pagamento;
+    - Além desta visão, para cada linha de faturamento, ao clicar, também deve expandir para as seguintes infos:
+        - Número da nota fiscal;
+        - Data de faturamento;
+        - Prazo de pagamento;
+        - Data prevista do pagamento;
+        - Data do pagamento.
+- O quadro de filtros, pode subir para cima dos quadros de resumo, e que todos os quadros abaixo, respeitem os filtros realizados;
+- Quando o cliente clicar em Exportar, seja gerado um excel (csv) ou PDF;
+- O campo “+ Nova Parcela” não deve aparecer para cliente;
 
-## Público-Alvo
-- Gestores de contratos e projetos;
-- Equipes de RH e Operações;
-- Time financeiro responsável pelo faturamento.
 
----
+Clientes:
+- Não deve aparecer para os clientes;
 
-## Funcionalidades Principais
 
-### 1. **Dashboard (Página Inicial)**
-**Objetivo:** Apresentar visão geral consolidada dos contratos e consultores.
+############ VISÃO INTERNA ############ 
+Funcionalidades Gerais:
+- Permissão de edição (inclusão, alteração e delete) para todas as páginas;
+- Deve-se ter todas as funcionalidades de usuários clientes, adicionando as funcionalidades de gestão (somando);
 
-**Elementos:**
-- Cards com indicadores:
-  - Contratos ativos
-  - Contratos inativos
-  - Consultores alocados
-- Lista de **vigência de contratos**
-- **Visão financeira de consumo**, com:
-  - Barra de progresso (% consumido)
-  - Valor total, faturado e saldo
+Dashboard:
+- Contratos ativos - mantém;
+- Consultores alocados - mantém;
+- Feedback Médio - mantém;
+- Total Faturado - mantém;
+- Resumo financeiro se mantém, porém, com poucas alterações:
+    - Valor total - mantém;
+    - Faturado e pago;
+    - Pendente pagamento;
+    - A faturar;
 
----
+Contratos:
+- Quando clicar sob o nome de um dos contratos, seja expandida uma tela abaixo, com a lista do histórico de faturamentos, e que neste, possua o anexo do Timesheet que foi validado com o cliente e algumas infos:
+    - Timesheet (excel anexo);
+    - Número de horas consumidas;
+    - Aprovador: nome do aprovador;
+    - Data da aprovação;
+- Quando clicar em “Novo Contrato” aparecer:
+    - Nome do Contrato - mantém;
+    - Cliente - mantém;
+    - Nome do responsável - Adicionar (deve ser selecionável a pessoa cadastrada ao cliente também cadastrado);
+    - Valor total - mantém
+    - Forma de pagamento - adicionar (a vista / parcelado)
+    - Status - mantém;
+    - Data de vencimento - mantém;
 
-### 2. **Gestão de Contratos**
-**Objetivo:** Exibir e acompanhar o desempenho financeiro de cada contrato.
+Consultores:
 
-**Funcionalidades:**
-- Listagem de contratos com:
-  - Nome do projeto e cliente
-  - Percentual faturado
-  - Valor total, valor faturado e saldo
-  - Parcelas mensais e status (“Parcela faturada”)
-- Filtros por cliente, status e período
-- Barra de progresso indicando percentual do contrato consumido
+- Ao clicar sob o nome do consultor, ele possa criar um feedback, e que possa ver o histórico de feedbacks que ele criou, e que o percentual, seja uma média destas notas;
+- Tenha o lugar para colocar a foto do consultor, pequena, mas que tenha;
+- Ao clicar em “Novo Consultor” deve aparecer:
+    - Nome do consultor - mantém;
+    - Cargo - mantém;
+    - Trocar parceiro por cliente;
+    - Contrato - deve ser filtrado pelos contratos do cliente selecionado;
+    - Feedback de Performance - Não deve aparecer na tela de cadastro de consultores;
 
----
+Faturamento:
+- Ao clicar sob o título de um dos contratos, expandir abaixo, a lista de faturas emitidas, pendente pagamento;
+    - Além desta visão, para cada linha de faturamento, ao clicar, também deve expandir para as seguintes infos:
+        - Número da nota fiscal;
+        - Data de faturamento;
+        - Prazo de pagamento;
+        - Data prevista do pagamento;
+        - Data do pagamento.
+- O quadro de filtros, pode subir para cima dos quadros de resumo, e que todos os quadros abaixo, respeitem os filtros realizados;
+- Quando clicar em Exportar, seja gerado um excel (csv) ou PDF;
+- Quero um quadro adicional que contabilize os valores inadimplentes, ou seja, valores totais com faturas geradas, e não pago, com data de pagamento limite vencida, e ao clicar, abra uma tela abaixo, demonstrando clientes e contratos inadimplentes;
+- Ao clicar em “+ Nova Parcela” deve aparecer:
+    - Contrato - mantém;
+    - Mês de referência - mantém;
+    - Valor - mantém;
+    - Número da nota fiscal;
+    - Data de faturamento;
+    - Prazo de pagamento;
+    - Data prevista do pagamento;
+    - Data do pagamento.
+    - Retirar a flag de marcar como faturado / pago (isso deverá ser feito através do botão que já existe (Marcar pago);
 
-### 3. **Gestão de Consultores**
-**Objetivo:** Visualizar consultores alocados por contrato com dados de desempenho.
+Clientes:
+- Resumo - mantém;
+- Lista de clientes - mantém;
+- Ao clicar em “+ Novo cliente” deve aparecer:
+    - Nome do cliente - mantém;
+    - CNPJ;
+    - Razão social;
+    - Parceiro - deve ser retirado por enquanto;
 
-**Funcionalidades:**
-- Agrupamento por contrato
-- Exibição de:
-  - Nome do consultor
-  - Cargo e especialidade
-  - Feedback individual (%)
-- Cálculo automático de:
-  - Quantidade de alocados
-  - Feedback médio do grupo
-- Cores por desempenho:
-  - 🟢 Verde (≥ 90%)
-  - 🟠 Laranja (80–89%)
-  - 🔴 Vermelho (< 80%)
+Parceiros:
+- Resumo - mantém;
+- Lista de parceiros - mantém;
+- Ao clicar em “+ Novo Parceiro” deve aparecer:
+    - Nome do parceiro;
+    - Estratégico ou não;
+    - Status;
 
----
-
-## ⚙️ Requisitos Técnicos
-
-### **Frontend**
-- **Framework:** React + TypeScript  
-- **UI:** Tailwind CSS + ShadCN/UI  
-- **Bibliotecas adicionais:**  
-  - Recharts (gráficos e barras de progresso)  
-  - Axios (requisições HTTP)  
-  - React Router (navegação)
-- **Design System:** Layout limpo, responsivo e minimalista
-
-### **Backend**
-- **Linguagem:** Node.js (TypeScript)  
-- **Framework:** Express.js  
-- **Banco de Dados:** PostgreSQL  
-- **ORM:** Prisma  
-- **Autenticação:** JWT com níveis de acesso (admin / gestor / leitura)
-
-**Endpoints principais:**
-| Método | Endpoint | Descrição |
-|---------|-----------|-----------|
-| GET | `/dashboard` | Retorna visão geral consolidada |
-| GET | `/contracts` | Lista contratos com parcelas |
-| POST | `/contracts` | Cria novo contrato |
-| GET | `/consultants` | Lista consultores e feedbacks |
-| POST | `/consultants` | Cria novo consultor |
-
----
-
-## Modelagem de Dados
-
-### **clients**
-| Campo | Tipo | Descrição |
-|--------|------|-----------|
-| id | UUID | Identificador |
-| name | String | Nome do cliente |
-
-### **contracts**
-| Campo | Tipo | Descrição |
-|--------|------|-----------|
-| id | UUID | Identificador |
-| name | String | Nome do contrato |
-| client_id | UUID | FK cliente |
-| total_value | Decimal | Valor total |
-| billed_value | Decimal | Valor faturado |
-| balance | Decimal | Saldo atual |
-| status | Enum (ativo, inativo, a_vencer) | Status |
-| end_date | Date | Vigência |
-
-### **installments**
-| Campo | Tipo | Descrição |
-|--------|------|-----------|
-| id | UUID | Identificador |
-| contract_id | UUID | FK contrato |
-| month | String | Ex: “Jan/25” |
-| value | Decimal | Valor da parcela |
-| billed | Boolean | Se já foi faturada |
-
-### **consultants**
-| Campo | Tipo | Descrição |
-|--------|------|-----------|
-| id | UUID | Identificador |
-| name | String | Nome |
-| role | String | Cargo |
-| contract_id | UUID | FK contrato |
-| feedback | Integer | % de avaliação |
-
----
-
-## KPIsimage.png
-- % de contratos ativos x inativos  
-- Média geral de feedbacks  
-- % médio de consumo financeiro  
-- Total de consultores alocados  
-
----
-
-## Requisitos Não Funcionais
-- **Segurança:** HTTPS, JWT e CORS configurados  
-- **Performance:** Resposta média de API < 200ms  
-- **Escalabilidade:** Multi-cliente preparado  
-- **Usabilidade:** Responsivo (desktop/tablet)  
-- **Deploy:** Docker + CI/CD via GitHub Actions (produção em ECS ou Railway)
-
----
-
-## Futuras Evoluções
-- Exportação de relatórios (PDF / Excel)  
-- Gráficos comparativos de desempenho  
-- Integração com ServiceNow / Jira  
-- Notificações automáticas de vencimento de contratos  
-
----
-
-## Cronograma de Entrega
-
-| Fase | Entrega | Duração |
-|------|----------|---------|
-| Planejamento & Design UI | Protótipo Figma + definição de API | 1 semana |
-| Backend MVP | Endpoints de contratos e consultores | 2 semanas |
-| Frontend MVP | Dashboard + listagens | 2 semanas |
-| Integração & Testes | Deploy + QA final | 1 semana |
-| **Total Estimado:** | **6 semanas** |
-
----
-
+    

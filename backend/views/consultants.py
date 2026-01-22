@@ -6,7 +6,7 @@ from pyramid.view import view_config, view_defaults
 from pyramid.response import Response
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
-from backend.models import Consultant, Contract, Partner, Client, UserRole
+from backend.models import Consultant, Contract, Partner, Client, UserRole, ConsultantFeedback
 from backend.schemas import ConsultantSchema, ConsultantCreateSchema
 from backend.auth_helpers import require_authenticated, auto_assign_partner
 import json

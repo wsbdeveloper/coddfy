@@ -52,8 +52,8 @@ def includeme(config):
     config.add_route('partner', '/api/partners/{id}')
     
     # Rotas de feedbacks de consultores
-    config.add_route('feedbacks', '/api/feedbacks')
-    config.add_route('feedback', '/api/feedbacks/{id}')
+    config.add_route('feedbacks_list', '/api/feedbacks')
+    config.add_route('feedbacks_create', '/api/feedbacks/{id}')
     
     # Rotas de timesheets/histórico de faturamentos
     config.add_route('timesheets', '/api/timesheets')

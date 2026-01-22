@@ -129,6 +129,8 @@ class ContractViews:
                 name=data['name'],
                 client_id=data['client_id'],
                 total_value=data['total_value'],
+                responsible_name=data['responsible_name'],
+                payment_method=data['payment_method'],
                 billed_value=0,
                 balance=data['total_value'],
                 status=ContractStatus(data.get('status', ContractStatus.ATIVO.value)),
