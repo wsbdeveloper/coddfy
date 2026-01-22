@@ -7,7 +7,8 @@ from pyramid.response import Response
 from sqlalchemy import func, Integer
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
-from backend.models import Installment, Contract, ContractStatus
+from backend.models import Installment, Contract, ContractStatus, Client, UserRole
+from backend.auth_helpers import require_authenticated, apply_partner_filter, can_access_resource
 from backend.schemas import InstallmentSchema
 import json
 from datetime import datetime
@@ -20,6 +21,13 @@ class InstallmentViews:
     def __init__(self, request):
         self.request = request
         self.db = request.dbsession
+
+    def _apply_partner_filter(self, query, user):
+        role_value = user.role.value if hasattr(user.role, "value") else user.role
+        if role_value == UserRole.ADMIN_GLOBAL or role_value == 'admin_global':
+            return query
+        query = query.join(Contract).join(Client)
+        return apply_partner_filter(query, Client, user)
     
     @view_config(route_name='installments', request_method='GET')
     def list_installments(self):
@@ -36,6 +44,7 @@ class InstallmentViews:
         Returns:
             Lista de parcelas com dados do contrato
         """
+        user = require_authenticated(self.request)
         query = self.db.query(Installment).options(
             joinedload(Installment.contract)
         )
@@ -58,6 +67,9 @@ class InstallmentViews:
         if year:
             query = query.filter(Installment.month.like(f'%/{year}'))
         
+        # Aplica filtro por parceiro (usuários não-admin só veem parcelas do seu parceiro)
+        query = self._apply_partner_filter(query, user)
+        
         # Ordena por mês (mais recente primeiro) e depois por criação
         installments = query.order_by(
             Installment.month.desc(),
@@ -77,29 +89,52 @@ class InstallmentViews:
         Returns:
             Estatísticas de faturamento
         """
+        user = require_authenticated(self.request)
+        
         # Total faturado (parcelas pagas)
         total_billed = self.db.query(
             func.sum(Installment.value)
-        ).filter(
+        )
+        total_billed = self._apply_partner_filter(total_billed, user).filter(
             Installment.billed == True
         ).scalar() or 0
         
         # Total pendente (parcelas não pagas)
         total_pending = self.db.query(
             func.sum(Installment.value)
-        ).filter(
+        )
+        total_pending = self._apply_partner_filter(total_pending, user).filter(
             Installment.billed == False
         ).scalar() or 0
         
         # Total geral
         total = float(total_billed) + float(total_pending)
+
+        # Total inadimplente (parcelas com data prevista vencida e sem pagamento)
+        today = datetime.utcnow()
+        overdue_filter = (
+            Installment.expected_payment_date.isnot(None),
+            Installment.expected_payment_date < today,
+            Installment.payment_date.is_(None)
+        )
+
+        total_overdue = self.db.query(
+            func.sum(Installment.value)
+        )
+        total_overdue = self._apply_partner_filter(total_overdue, user).filter(
+            *overdue_filter
+        ).scalar() or 0
+
+        count_overdue = self._apply_partner_filter(self.db.query(Installment), user).filter(
+            *overdue_filter
+        ).count()
         
         # Contagem de parcelas
-        count_billed = self.db.query(Installment).filter(
+        count_billed = self._apply_partner_filter(self.db.query(Installment), user).filter(
             Installment.billed == True
         ).count()
         
-        count_pending = self.db.query(Installment).filter(
+        count_pending = self._apply_partner_filter(self.db.query(Installment), user).filter(
             Installment.billed == False
         ).count()
         
@@ -114,9 +149,12 @@ class InstallmentViews:
             ).label('billed_value')
         ).join(
             Installment, Contract.id == Installment.contract_id
+        ).join(
+            Client, Contract.client_id == Client.id
         ).filter(
             Contract.status == ContractStatus.ATIVO
-        ).group_by(
+        )
+        installments_by_contract = apply_partner_filter(installments_by_contract, Client, user).group_by(
             Contract.id, Contract.name
         ).all()
         
@@ -130,6 +168,37 @@ class InstallmentViews:
                 'billed_value': float(row.billed_value or 0),
                 'pending_value': float((row.total_value or 0) - (row.billed_value or 0))
             })
+
+        overdue_rows = self.db.query(
+            Contract.id.label('contract_id'),
+            Contract.name.label('contract_name'),
+            Client.id.label('client_id'),
+            Client.name.label('client_name'),
+            func.count(Installment.id).label('overdue_installments'),
+            func.sum(Installment.value).label('overdue_value')
+        ).join(
+            Installment, Contract.id == Installment.contract_id
+        ).join(
+            Client, Contract.client_id == Client.id
+        ).filter(
+            *overdue_filter
+        )
+        overdue_rows = apply_partner_filter(overdue_rows, Client, user).group_by(
+            Contract.id, Contract.name, Client.id, Client.name
+        ).order_by(
+            Client.name, Contract.name
+        ).all()
+
+        overdue_contracts = []
+        for row in overdue_rows:
+            overdue_contracts.append({
+                'client_id': str(row.client_id),
+                'client_name': row.client_name,
+                'contract_id': str(row.contract_id),
+                'contract_name': row.contract_name,
+                'overdue_installments': row.overdue_installments,
+                'overdue_value': float(row.overdue_value or 0)
+            })
         
         return {
             'total_billed': float(total_billed),
@@ -138,6 +207,9 @@ class InstallmentViews:
             'count_billed': count_billed,
             'count_pending': count_pending,
             'percentage_billed': (float(total_billed) / total * 100) if total > 0 else 0,
+            'total_overdue': float(total_overdue),
+            'count_overdue': count_overdue,
+            'overdue_contracts': overdue_contracts,
             'contracts': contracts_data
         }
     
@@ -150,6 +222,7 @@ class InstallmentViews:
         Returns:
             Dados da parcela com informações do contrato
         """
+        user = require_authenticated(self.request)
         installment_id = self.request.matchdict['id']
         installment = self.db.query(Installment).options(
             joinedload(Installment.contract)
@@ -161,6 +234,14 @@ class InstallmentViews:
             return Response(
                 json.dumps({'error': 'Parcela não encontrada'}).encode('utf-8'),
                 status=404,
+                content_type='application/json',
+                charset='utf-8'
+            )
+        
+        if not can_access_resource(user, installment.contract.client.partner_id):
+            return Response(
+                json.dumps({'error': 'Você não tem permissão para acessar esta parcela'}).encode('utf-8'),
+                status=403,
                 content_type='application/json',
                 charset='utf-8'
             )
@@ -186,6 +267,7 @@ class InstallmentViews:
             Dados da parcela criada
         """
         try:
+            user = require_authenticated(self.request)
             data = self.request.json_body
             
             # Valida se o contrato existe
@@ -200,12 +282,20 @@ class InstallmentViews:
                     charset='utf-8'
                 )
             
+            if not can_access_resource(user, contract.client.partner_id):
+                return Response(
+                    json.dumps({'error': 'Você não tem permissão para criar parcelas para este contrato'}).encode('utf-8'),
+                    status=403,
+                    content_type='application/json',
+                    charset='utf-8'
+                )
+            
             # Cria a parcela
             installment = Installment(
                 contract_id=data['contract_id'],
                 month=data['month'],
                 value=data['value'],
-                billed=data.get('billed', False),
+                billed=False,
                 invoice_number=data.get('invoice_number'),
                 billing_date=data.get('billing_date'),
                 payment_term=data.get('payment_term'),
@@ -256,6 +346,7 @@ class InstallmentViews:
         Returns:
             Dados da parcela atualizada
         """
+        user = require_authenticated(self.request)
         installment_id = self.request.matchdict['id']
         installment = self.db.query(Installment).options(
             joinedload(Installment.contract)
@@ -267,6 +358,14 @@ class InstallmentViews:
             return Response(
                 json.dumps({'error': 'Parcela não encontrada'}).encode('utf-8'),
                 status=404,
+                content_type='application/json',
+                charset='utf-8'
+            )
+        
+        if not can_access_resource(user, installment.contract.client.partner_id):
+            return Response(
+                json.dumps({'error': 'Você não tem permissão para atualizar esta parcela'}).encode('utf-8'),
+                status=403,
                 content_type='application/json',
                 charset='utf-8'
             )
@@ -305,6 +404,7 @@ class InstallmentViews:
         Returns:
             Dados da parcela atualizada
         """
+        user = require_authenticated(self.request)
         installment_id = self.request.matchdict['id']
         installment = self.db.query(Installment).options(
             joinedload(Installment.contract)
@@ -316,6 +416,14 @@ class InstallmentViews:
             return Response(
                 json.dumps({'error': 'Parcela não encontrada'}).encode('utf-8'),
                 status=404,
+                content_type='application/json',
+                charset='utf-8'
+            )
+        
+        if not can_access_resource(user, installment.contract.client.partner_id):
+            return Response(
+                json.dumps({'error': 'Você não tem permissão para atualizar esta parcela'}).encode('utf-8'),
+                status=403,
                 content_type='application/json',
                 charset='utf-8'
             )
@@ -368,6 +476,7 @@ class InstallmentViews:
         Returns:
             Mensagem de confirmação
         """
+        user = require_authenticated(self.request)
         installment_id = self.request.matchdict['id']
         installment = self.db.query(Installment).filter(
             Installment.id == installment_id
@@ -377,6 +486,14 @@ class InstallmentViews:
             return Response(
                 json.dumps({'error': 'Parcela não encontrada'}).encode('utf-8'),
                 status=404,
+                content_type='application/json',
+                charset='utf-8'
+            )
+        
+        if not can_access_resource(user, installment.contract.client.partner_id):
+            return Response(
+                json.dumps({'error': 'Você não tem permissão para deletar esta parcela'}).encode('utf-8'),
+                status=403,
                 content_type='application/json',
                 charset='utf-8'
             )

@@ -5,8 +5,7 @@ Usuários podem criar feedbacks apenas para consultores do seu parceiro
 import json
 from pyramid.view import view_config
 from pyramid.response import Response
-from backend.database import DBSession
-from backend.models import ConsultantFeedback, Consultant, Contract
+from backend.models import ConsultantFeedback, Consultant, Contract, UserRole
 from backend.schemas import ConsultantFeedbackSchema, ConsultantFeedbackCreateSchema
 from backend.auth_helpers import (
     require_authenticated, 
@@ -25,9 +24,10 @@ def list_feedbacks(request):
     """
     # Verificar autenticação
     user = require_authenticated(request)
+    db = request.dbsession
     
     # Query base
-    query = DBSession.query(ConsultantFeedback).join(Consultant)
+    query = db.query(ConsultantFeedback).join(Consultant)
     
     # Aplicar filtro por parceiro
     query = apply_partner_filter(query, Consultant, user)
@@ -40,6 +40,10 @@ def list_feedbacks(request):
     contract_id = request.params.get('contract_id')
     if contract_id:
         query = query.filter(ConsultantFeedback.contract_id == contract_id)
+
+    mine = request.params.get('mine')
+    if mine and mine.lower() in ('true', '1', 'yes'):
+        query = query.filter(ConsultantFeedback.user_id == user.id)
     
     feedbacks = query.order_by(ConsultantFeedback.created_at.desc()).all()
     
@@ -61,6 +65,7 @@ def create_feedback(request):
     """
     # Verificar autenticação
     user = require_authenticated(request)
+    db = request.dbsession
     
     try:
         # Validar dados
@@ -68,7 +73,7 @@ def create_feedback(request):
         data = schema.load(request.json_body)
         
         # Verificar se o consultor existe
-        consultant = DBSession.query(Consultant).filter_by(id=data['consultant_id']).first()
+        consultant = db.query(Consultant).filter_by(id=data['consultant_id']).first()
         if not consultant:
             return Response(
                 body=json.dumps({'error': 'Consultor não encontrado'}).encode('utf-8'),
@@ -88,7 +93,7 @@ def create_feedback(request):
         
         # Se especificou contrato, verificar se o consultor está nesse contrato
         if data.get('contract_id'):
-            contract = DBSession.query(Contract).filter_by(id=data['contract_id']).first()
+            contract = db.query(Contract).filter_by(id=data['contract_id']).first()
             if not contract:
                 return Response(
                     body=json.dumps({'error': 'Contrato não encontrado'}).encode('utf-8'),
@@ -113,11 +118,11 @@ def create_feedback(request):
             comment=data['comment'],
             rating=data.get('rating')
         )
-        DBSession.add(feedback)
-        DBSession.flush()
+        db.add(feedback)
+        db.flush()
         
         # Recarregar para pegar relacionamentos
-        DBSession.refresh(feedback)
+        db.refresh(feedback)
         
         # Serializar resposta
         result_schema = ConsultantFeedbackSchema()
@@ -144,9 +149,10 @@ def get_feedback(request):
     """
     # Verificar autenticação
     user = require_authenticated(request)
+    db = request.dbsession
     
     feedback_id = request.matchdict['id']
-    feedback = DBSession.query(ConsultantFeedback).join(Consultant).filter(
+    feedback = db.query(ConsultantFeedback).join(Consultant).filter(
         ConsultantFeedback.id == feedback_id
     ).first()
     
@@ -154,6 +160,14 @@ def get_feedback(request):
         return Response(
             body=json.dumps({'error': 'Feedback não encontrado'}).encode('utf-8'),
             status=404,
+            content_type='application/json',
+            charset='utf-8'
+        )
+    
+    if not can_access_resource(user, feedback.consultant.partner_id):
+        return Response(
+            body=json.dumps({'error': 'Você não tem permissão para acessar este feedback'}).encode('utf-8'),
+            status=403,
             content_type='application/json',
             charset='utf-8'
         )
@@ -184,14 +198,23 @@ def update_feedback(request):
     """
     # Verificar autenticação
     user = require_authenticated(request)
+    db = request.dbsession
     
     feedback_id = request.matchdict['id']
-    feedback = DBSession.query(ConsultantFeedback).filter_by(id=feedback_id).first()
+    feedback = db.query(ConsultantFeedback).filter_by(id=feedback_id).first()
     
     if not feedback:
         return Response(
             body=json.dumps({'error': 'Feedback não encontrado'}).encode('utf-8'),
             status=404,
+            content_type='application/json',
+            charset='utf-8'
+        )
+    
+    if not can_access_resource(user, feedback.consultant.partner_id):
+        return Response(
+            body=json.dumps({'error': 'Você não tem permissão para acessar este feedback'}).encode('utf-8'),
+            status=403,
             content_type='application/json',
             charset='utf-8'
         )
@@ -214,7 +237,7 @@ def update_feedback(request):
         feedback.comment = data['comment']
         if 'rating' in data:
             feedback.rating = data['rating']
-        DBSession.flush()
+        db.flush()
         
         # Serializar resposta
         result_schema = ConsultantFeedbackSchema()
@@ -242,9 +265,10 @@ def delete_feedback(request):
     """
     # Verificar autenticação
     user = require_authenticated(request)
+    db = request.dbsession
     
     feedback_id = request.matchdict['id']
-    feedback = DBSession.query(ConsultantFeedback).filter_by(id=feedback_id).first()
+    feedback = db.query(ConsultantFeedback).filter_by(id=feedback_id).first()
     
     if not feedback:
         return Response(
@@ -255,7 +279,6 @@ def delete_feedback(request):
         )
     
     # Apenas o autor ou admin pode deletar
-    from backend.models import UserRole
     is_author = str(feedback.user_id) == str(user.id)
     is_admin = user.role in [UserRole.ADMIN_GLOBAL, UserRole.ADMIN_PARTNER]
     
@@ -268,8 +291,8 @@ def delete_feedback(request):
         )
     
     try:
-        DBSession.delete(feedback)
-        DBSession.flush()
+        db.delete(feedback)
+        db.flush()
         
         return Response(
             body=json.dumps({'message': 'Feedback deletado com sucesso'}).encode('utf-8'),
@@ -279,7 +302,7 @@ def delete_feedback(request):
         )
     
     except Exception as e:
-        DBSession.rollback()
+        db.rollback()
         return Response(
             body=json.dumps({'error': f'Erro ao deletar feedback: {str(e)}'}).encode('utf-8'),
             status=500,

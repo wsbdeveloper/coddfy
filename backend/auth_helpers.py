@@ -144,6 +144,7 @@ def can_access_resource(user: User, resource_partner_id: str):
     if user.role == UserRole.ADMIN_GLOBAL:
         return True
     
+    print(f"User: {user.partner_id}, Resource: {resource_partner_id}")
     return str(user.partner_id) == str(resource_partner_id)
 
 

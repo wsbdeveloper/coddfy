@@ -7,6 +7,7 @@ from pyramid.response import Response
 from sqlalchemy.exc import IntegrityError
 from backend.models import Contract, Client, Installment, ContractStatus
 from backend.schemas import ContractSchema, ContractCreateSchema
+from backend.auth_helpers import require_authenticated, apply_partner_filter, can_access_resource
 import json
 from datetime import datetime
 
@@ -34,7 +35,8 @@ class ContractViews:
         Returns:
             Lista de contratos com dados relacionados
         """
-        query = self.db.query(Contract)
+        user = require_authenticated(self.request)
+        query = self.db.query(Contract).join(Client)
         
         # Filtros opcionais
         client_id = self.request.params.get('client_id')
@@ -64,6 +66,9 @@ class ContractViews:
             except ValueError:
                 pass
         
+        # Aplica filtro por parceiro (usuários não-admin só veem contratos do seu parceiro)
+        query = apply_partner_filter(query, Client, user)
+        
         # Ordena por data de criação
         contracts = query.order_by(Contract.created_at.desc()).all()
         
@@ -80,13 +85,24 @@ class ContractViews:
         Returns:
             Dados completos do contrato incluindo parcelas e consultores
         """
+        user = require_authenticated(self.request)
         contract_id = self.request.matchdict['id']
-        contract = self.db.query(Contract).filter(Contract.id == contract_id).first()
+        contract = self.db.query(Contract).join(Client).filter(
+            Contract.id == contract_id
+        ).first()
         
         if not contract:
             return Response(
                 json.dumps({'error': 'Contrato não encontrado'}).encode('utf-8'),
                 status=404,
+                content_type='application/json',
+                charset='utf-8'
+            )
+        
+        if not can_access_resource(user, contract.client.partner_id):
+            return Response(
+                json.dumps({'error': 'Você não tem permissão para acessar este contrato'}).encode('utf-8'),
+                status=403,
                 content_type='application/json',
                 charset='utf-8'
             )
@@ -111,6 +127,8 @@ class ContractViews:
             Dados do contrato criado
         """
         try:
+            user = require_authenticated(self.request)
+            
             # Valida os dados de entrada
             schema = ContractCreateSchema()
             data = schema.load(self.request.json_body)
@@ -122,6 +140,14 @@ class ContractViews:
                     json.dumps({'error': 'Cliente não encontrado'}),
                     status=404,
                     content_type='application/json'
+                )
+            
+            if not can_access_resource(user, client.partner_id):
+                return Response(
+                    json.dumps({'error': 'Você não tem permissão para criar contrato para este cliente'}).encode('utf-8'),
+                    status=403,
+                    content_type='application/json',
+                    charset='utf-8'
                 )
             
             # Cria o contrato
@@ -172,13 +198,24 @@ class ContractViews:
         Returns:
             Dados do contrato atualizado
         """
+        user = require_authenticated(self.request)
         contract_id = self.request.matchdict['id']
-        contract = self.db.query(Contract).filter(Contract.id == contract_id).first()
+        contract = self.db.query(Contract).join(Client).filter(
+            Contract.id == contract_id
+        ).first()
         
         if not contract:
             return Response(
                 json.dumps({'error': 'Contrato não encontrado'}).encode('utf-8'),
                 status=404,
+                content_type='application/json',
+                charset='utf-8'
+            )
+        
+        if not can_access_resource(user, contract.client.partner_id):
+            return Response(
+                json.dumps({'error': 'Você não tem permissão para atualizar este contrato'}).encode('utf-8'),
+                status=403,
                 content_type='application/json',
                 charset='utf-8'
             )
@@ -195,6 +232,17 @@ class ContractViews:
                 contract.status = ContractStatus(data['status'])
             if 'end_date' in data:
                 contract.end_date = datetime.fromisoformat(data['end_date'])
+            if 'responsible_name' in data:
+                contract.responsible_name = data['responsible_name']
+            if 'payment_method' in data:
+                if data['payment_method'] not in ['a_vista', 'parcelado']:
+                    return Response(
+                        json.dumps({'error': 'Forma de pagamento inválida'}).encode('utf-8'),
+                        status=400,
+                        content_type='application/json',
+                        charset='utf-8'
+                    )
+                contract.payment_method = data['payment_method']
             
             # Recalcula o balance
             contract.balance = contract.total_value - contract.billed_value
@@ -223,13 +271,24 @@ class ContractViews:
         Returns:
             Mensagem de confirmação
         """
+        user = require_authenticated(self.request)
         contract_id = self.request.matchdict['id']
-        contract = self.db.query(Contract).filter(Contract.id == contract_id).first()
+        contract = self.db.query(Contract).join(Client).filter(
+            Contract.id == contract_id
+        ).first()
         
         if not contract:
             return Response(
                 json.dumps({'error': 'Contrato não encontrado'}).encode('utf-8'),
                 status=404,
+                content_type='application/json',
+                charset='utf-8'
+            )
+        
+        if not can_access_resource(user, contract.client.partner_id):
+            return Response(
+                json.dumps({'error': 'Você não tem permissão para deletar este contrato'}).encode('utf-8'),
+                status=403,
                 content_type='application/json',
                 charset='utf-8'
             )

@@ -46,6 +46,8 @@ class PartnerSchema(Schema):
     id = fields.UUID(dump_only=True)
     name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
     is_active = fields.Bool()
+    is_strategic = fields.Bool()
+    status = fields.Str(allow_none=True, validate=validate.Length(max=50))
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
 
@@ -53,6 +55,9 @@ class PartnerSchema(Schema):
 class PartnerCreateSchema(Schema):
     """Schema para criação de parceiro"""
     name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+    is_strategic = fields.Bool(allow_none=True)
+    status = fields.Str(allow_none=True, validate=validate.Length(max=50))
+    is_active = fields.Bool(allow_none=True)
 
 
 # User Schemas
@@ -99,6 +104,8 @@ class ClientSchema(Schema):
     """Schema para serialização de cliente"""
     id = fields.UUID(dump_only=True)
     name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+    cnpj = fields.Str(allow_none=True, validate=validate.Length(max=20))
+    razao_social = fields.Str(allow_none=True, validate=validate.Length(max=255))
     partner_id = fields.UUID(required=True)
     partner = fields.Nested(PartnerSchema, dump_only=True)
     created_at = fields.DateTime(dump_only=True)
@@ -108,6 +115,8 @@ class ClientSchema(Schema):
 class ClientCreateSchema(Schema):
     """Schema para criação de cliente"""
     name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+    cnpj = fields.Str(allow_none=True, validate=validate.Length(max=20))
+    razao_social = fields.Str(allow_none=True, validate=validate.Length(max=255))
     partner_id = fields.UUID(allow_none=True)  # Opcional, pode ser fornecido via partner (nome)
     partner = fields.Str(allow_none=True, validate=validate.Length(min=1, max=255))  # Nome do parceiro como alternativa
 
@@ -190,6 +199,7 @@ class ConsultantCreateSchema(Schema):
     name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
     role = fields.Str(required=True, validate=validate.Length(min=1, max=100))
     contract_id = fields.UUID(required=True)
+    client_id = fields.UUID(allow_none=True)
     partner_id = fields.UUID(allow_none=True)  # Opcional, será atribuído automaticamente
     photo_url = fields.Str(allow_none=True, validate=validate.Length(max=500))
 
@@ -209,7 +219,10 @@ class ContractSchema(Schema):
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
 
-    payment_method = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+    payment_method = fields.Str(
+        required=True,
+        validate=validate.OneOf(['a_vista', 'parcelado'])
+    )
     responsible_name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
     
     # Nested relationships
@@ -222,7 +235,10 @@ class ContractSchema(Schema):
 class ContractCreateSchema(Schema):
     """Schema para criação de contrato"""
     name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
-    payment_method = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+    payment_method = fields.Str(
+        required=True,
+        validate=validate.OneOf(['a_vista', 'parcelado'])
+    )
     responsible_name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
     client_id = fields.UUID(required=True)
     total_value = fields.Decimal(required=True, as_string=True)
@@ -263,22 +279,22 @@ class TimesheetSchema(Schema):
     """Schema para serialização de timesheet"""
     id = fields.UUID(dump_only=True)
     contract_id = fields.UUID(required=True)
-    installment_id = fields.UUID(allow_none=True)
-    timesheet_file_url = fields.Str(allow_none=True, validate=validate.Length(max=500))
-    hours_consumed = fields.Decimal(allow_none=True, as_string=True)
-    approver_name = fields.Str(allow_none=True, validate=validate.Length(max=255))
+    consultant_id = fields.UUID(allow_none=True)
+    file_url = fields.Str(allow_none=True, validate=validate.Length(max=1000))
+    hours = fields.Decimal(allow_none=True, as_string=True)
+    approver = fields.Str(allow_none=True, validate=validate.Length(max=255))
     approval_date = FlexibleDateTime(allow_none=True)
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
+    approved = fields.Bool(dump_only=True)
+    uploaded_at = fields.DateTime(dump_only=True)
     contract = fields.Nested(ContractSimpleSchema, dump_only=True)
 
 
 class TimesheetCreateSchema(Schema):
     """Schema para criação de timesheet"""
     contract_id = fields.UUID(required=True)
-    installment_id = fields.UUID(allow_none=True)
-    timesheet_file_url = fields.Str(allow_none=True, validate=validate.Length(max=500))
-    hours_consumed = fields.Decimal(allow_none=True, as_string=True)
-    approver_name = fields.Str(allow_none=True, validate=validate.Length(max=255))
+    consultant_id = fields.UUID(allow_none=True)
+    file_url = fields.Str(allow_none=True, validate=validate.Length(max=1000))
+    hours = fields.Decimal(allow_none=True, as_string=True)
+    approver = fields.Str(allow_none=True, validate=validate.Length(max=255))
     approval_date = FlexibleDateTime(allow_none=True)
 

@@ -8,7 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from backend.models import Consultant, Contract, Partner, Client, UserRole, ConsultantFeedback
 from backend.schemas import ConsultantSchema, ConsultantCreateSchema
-from backend.auth_helpers import require_authenticated, auto_assign_partner
+from backend.auth_helpers import require_authenticated, auto_assign_partner, apply_partner_filter, can_access_resource
 import json
 
 
@@ -32,23 +32,26 @@ class ConsultantViews:
         Returns:
             Lista de contratos com seus consultores e estatísticas
         """
+        user = require_authenticated(self.request)
         contract_id = self.request.params.get('contract_id')
         
+        query = self.db.query(Contract).join(Client)
         if contract_id:
-            # Filtra por contrato específico
-            contracts = self.db.query(Contract).filter(
-                Contract.id == contract_id
-            ).all()
+            query = query.filter(Contract.id == contract_id)
         else:
-            # Busca todos os contratos com consultores
-            contracts = self.db.query(Contract).join(Consultant).distinct().all()
+            query = query.join(Consultant).distinct()
+        
+        query = apply_partner_filter(query, Client, user)
+        contracts = query.all()
         
         # Organiza os dados por contrato
         result = []
         for contract in contracts:
-            consultants = self.db.query(Consultant).filter(
+            consultants_query = self.db.query(Consultant).filter(
                 Consultant.contract_id == contract.id
-            ).all()
+            )
+            consultants_query = apply_partner_filter(consultants_query, Consultant, user)
+            consultants = consultants_query.all()
             
             if not consultants:
                 continue
@@ -81,6 +84,7 @@ class ConsultantViews:
         Returns:
             Dados completos do consultor
         """
+        user = require_authenticated(self.request)
         consultant_id = self.request.matchdict['id']
         consultant = self.db.query(Consultant).filter(
             Consultant.id == consultant_id
@@ -90,6 +94,14 @@ class ConsultantViews:
             return Response(
                 json.dumps({'error': 'Consultor não encontrado'}).encode('utf-8'),
                 status=404,
+                content_type='application/json',
+                charset='utf-8'
+            )
+        
+        if not can_access_resource(user, consultant.partner_id):
+            return Response(
+                json.dumps({'error': 'Você não tem permissão para acessar este consultor'}).encode('utf-8'),
+                status=403,
                 content_type='application/json',
                 charset='utf-8'
             )
@@ -133,6 +145,16 @@ class ConsultantViews:
                     content_type='application/json',
                     charset='utf-8'
                 )
+
+            # Se informou client_id, garantir que o contrato pertence ao cliente
+            if data.get('client_id'):
+                if str(contract.client_id) != str(data['client_id']):
+                    return Response(
+                        json.dumps({'error': 'Contrato não pertence ao cliente informado'}).encode('utf-8'),
+                        status=400,
+                        content_type='application/json',
+                        charset='utf-8'
+                    )
             
             # O partner_id do consultor deve ser o mesmo do cliente do contrato
             # Busca o cliente diretamente se necessário

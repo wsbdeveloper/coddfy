@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from backend.models import Client, Partner
 from backend.schemas import ClientSchema, ClientCreateSchema
-from backend.auth_helpers import require_authenticated, auto_assign_partner, apply_partner_filter
+from backend.auth_helpers import require_authenticated, auto_assign_partner, apply_partner_filter, can_access_resource
 import json
 
 
@@ -49,6 +49,7 @@ class ClientViews:
         Returns:
             Dados do cliente com informações do parceiro
         """
+        user = require_authenticated(self.request)
         client_id = self.request.matchdict['id']
         client = self.db.query(Client).options(joinedload(Client.partner)).filter(
             Client.id == client_id
@@ -58,6 +59,14 @@ class ClientViews:
             return Response(
                 json.dumps({'error': 'Cliente não encontrado'}).encode('utf-8'),
                 status=404,
+                content_type='application/json',
+                charset='utf-8'
+            )
+        
+        if not can_access_resource(user, client.partner_id):
+            return Response(
+                json.dumps({'error': 'Você não tem permissão para acessar este cliente'}).encode('utf-8'),
+                status=403,
                 content_type='application/json',
                 charset='utf-8'
             )
@@ -123,7 +132,9 @@ class ClientViews:
             # Cria o cliente
             client = Client(
                 name=data['name'],
-                partner_id=data['partner_id']
+                partner_id=data['partner_id'],
+                cnpj=data.get('cnpj'),
+                razao_social=data.get('razao_social')
             )
             
             self.db.add(client)
@@ -161,6 +172,7 @@ class ClientViews:
         Returns:
             Dados do cliente atualizado
         """
+        user = require_authenticated(self.request)
         client_id = self.request.matchdict['id']
         client = self.db.query(Client).filter(Client.id == client_id).first()
         
@@ -172,11 +184,23 @@ class ClientViews:
                 charset='utf-8'
             )
         
+        if not can_access_resource(user, client.partner_id):
+            return Response(
+                json.dumps({'error': 'Você não tem permissão para atualizar este cliente'}).encode('utf-8'),
+                status=403,
+                content_type='application/json',
+                charset='utf-8'
+            )
+        
         try:
             data = self.request.json_body
             
             if 'name' in data:
                 client.name = data['name']
+            if 'cnpj' in data:
+                client.cnpj = data['cnpj']
+            if 'razao_social' in data:
+                client.razao_social = data['razao_social']
             
             self.db.flush()
             
@@ -201,6 +225,7 @@ class ClientViews:
         Returns:
             Mensagem de confirmação
         """
+        user = require_authenticated(self.request)
         client_id = self.request.matchdict['id']
         client = self.db.query(Client).filter(Client.id == client_id).first()
         
@@ -208,6 +233,14 @@ class ClientViews:
             return Response(
                 json.dumps({'error': 'Cliente não encontrado'}).encode('utf-8'),
                 status=404,
+                content_type='application/json',
+                charset='utf-8'
+            )
+        
+        if not can_access_resource(user, client.partner_id):
+            return Response(
+                json.dumps({'error': 'Você não tem permissão para deletar este cliente'}).encode('utf-8'),
+                status=403,
                 content_type='application/json',
                 charset='utf-8'
             )

@@ -5,7 +5,7 @@ Endpoints CRUD para gestão de timesheets
 from pyramid.view import view_config, view_defaults
 from pyramid.response import Response
 from sqlalchemy.orm import joinedload
-from backend.models import Timesheet, Contract, Installment
+from backend.models import Timesheet, Contract, Consultant, Client
 from backend.schemas import TimesheetSchema, TimesheetCreateSchema
 from backend.auth_helpers import require_authenticated, can_access_resource, apply_partner_filter
 import json
@@ -27,7 +27,7 @@ class TimesheetViews:
         
         Query params:
             - contract_id: Filtrar por contrato (UUID)
-            - installment_id: Filtrar por parcela (UUID)
+            - consultant_id: Filtrar por consultor (UUID)
         
         Returns:
             Lista de timesheets
@@ -43,13 +43,12 @@ class TimesheetViews:
         if contract_id:
             query = query.filter(Timesheet.contract_id == contract_id)
         
-        installment_id = self.request.params.get('installment_id')
-        if installment_id:
-            query = query.filter(Timesheet.installment_id == installment_id)
+        consultant_id = self.request.params.get('consultant_id')
+        if consultant_id:
+            query = query.filter(Timesheet.consultant_id == consultant_id)
         
         # Aplicar filtro por parceiro (usuários não-admin só veem timesheets dos seus contratos)
         if user.role.value != 'admin_global':
-            from backend.models import Client
             query = query.join(Contract).join(Client)
             query = apply_partner_filter(query, Client, user)
         
@@ -107,10 +106,10 @@ class TimesheetViews:
         
         Body:
             - contract_id: ID do contrato
-            - installment_id: ID da parcela (opcional)
-            - timesheet_file_url: URL do arquivo Excel
-            - hours_consumed: Número de horas consumidas
-            - approver_name: Nome do aprovador
+            - consultant_id: ID do consultor (opcional)
+            - file_url: URL do arquivo Excel
+            - hours: Número de horas consumidas
+            - approver: Nome do aprovador
             - approval_date: Data da aprovação
         
         Returns:
@@ -148,16 +147,17 @@ class TimesheetViews:
                         charset='utf-8'
                     )
             
-            # Se especificou parcela, verificar se existe e pertence ao contrato
-            if data.get('installment_id'):
-                installment = self.db.query(Installment).filter(
-                    Installment.id == data['installment_id'],
-                    Installment.contract_id == data['contract_id']
+            # Se especificou consultor, verificar se existe e pertence ao contrato
+            consultant_id = data.get('consultant_id')
+            if consultant_id:
+                consultant = self.db.query(Consultant).filter(
+                    Consultant.id == consultant_id,
+                    Consultant.contract_id == data['contract_id']
                 ).first()
                 
-                if not installment:
+                if not consultant:
                     return Response(
-                        json.dumps({'error': 'Parcela não encontrada ou não pertence a este contrato'}).encode('utf-8'),
+                        json.dumps({'error': 'Consultor não encontrado ou não pertence a este contrato'}).encode('utf-8'),
                         status=400,
                         content_type='application/json',
                         charset='utf-8'
@@ -166,10 +166,10 @@ class TimesheetViews:
             # Cria o timesheet
             timesheet = Timesheet(
                 contract_id=data['contract_id'],
-                installment_id=data.get('installment_id'),
-                timesheet_file_url=data.get('timesheet_file_url'),
-                hours_consumed=data.get('hours_consumed'),
-                approver_name=data.get('approver_name'),
+                consultant_id=data.get('consultant_id'),
+                file_url=data.get('file_url'),
+                hours=data.get('hours') or 0,
+                approver=data.get('approver'),
                 approval_date=data.get('approval_date')
             )
             
@@ -239,29 +239,28 @@ class TimesheetViews:
             data = self.request.json_body
             
             # Atualiza campos permitidos
-            if 'timesheet_file_url' in data:
-                timesheet.timesheet_file_url = data['timesheet_file_url']
-            if 'hours_consumed' in data:
-                timesheet.hours_consumed = data['hours_consumed']
-            if 'approver_name' in data:
-                timesheet.approver_name = data['approver_name']
+            if 'file_url' in data:
+                timesheet.file_url = data['file_url']
+            if 'hours' in data:
+                timesheet.hours = data['hours'] or 0
+            if 'approver' in data:
+                timesheet.approver = data['approver']
             if 'approval_date' in data:
                 timesheet.approval_date = data['approval_date']
-            if 'installment_id' in data:
-                # Verificar se a parcela existe e pertence ao contrato
-                if data['installment_id']:
-                    installment = self.db.query(Installment).filter(
-                        Installment.id == data['installment_id'],
-                        Installment.contract_id == timesheet.contract_id
+            if 'consultant_id' in data:
+                if data['consultant_id']:
+                    consultant = self.db.query(Consultant).filter(
+                        Consultant.id == data['consultant_id'],
+                        Consultant.contract_id == timesheet.contract_id
                     ).first()
-                    if not installment:
+                    if not consultant:
                         return Response(
-                            json.dumps({'error': 'Parcela não encontrada ou não pertence a este contrato'}).encode('utf-8'),
+                            json.dumps({'error': 'Consultor não encontrado ou não pertence a este contrato'}).encode('utf-8'),
                             status=400,
                             content_type='application/json',
                             charset='utf-8'
                         )
-                timesheet.installment_id = data['installment_id']
+                timesheet.consultant_id = data['consultant_id']
             
             self.db.flush()
             

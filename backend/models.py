@@ -293,5 +293,5 @@ class Timesheet(Base):
     consultant = relationship("Consultant", back_populates="timesheets")
 
     def __repr__(self):
-        return f"<Timesheet(contract_id='{self.contract_id}', hours_consumed={self.hours_consumed})>"
+        return f"<Timesheet(contract_id='{self.contract_id}', hours={self.hours})>"
 
