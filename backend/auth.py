@@ -133,12 +133,16 @@ class AuthService:
             True se tem permissão, False caso contrário
         """
         role_hierarchy = {
-            UserRole.LEITURA: 1,
-            UserRole.GESTOR: 2,
-            UserRole.ADMIN: 3
+            UserRole.USER_PARTNER: 1,
+            UserRole.ADMIN_PARTNER: 2,
+            UserRole.ADMIN_GLOBAL: 3
         }
-        
-        user_level = role_hierarchy.get(UserRole(user_role), 0)
+
+        try:
+            normalized_user_role = UserRole(user_role) if isinstance(user_role, str) else user_role
+        except ValueError:
+            normalized_user_role = user_role
+        user_level = role_hierarchy.get(normalized_user_role, 0)
         required_level = role_hierarchy.get(required_role, 0)
         
         return user_level >= required_level

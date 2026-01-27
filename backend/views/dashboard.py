@@ -5,7 +5,7 @@ Endpoints para exibir estatísticas consolidadas
 from pyramid.view import view_config
 from sqlalchemy import func
 from datetime import datetime, timedelta
-from backend.models import Contract, Consultant, ContractStatus, Installment, Client
+from backend.models import Contract, Consultant, ContractStatus, Installment, Client, User
 from backend.auth_helpers import require_authenticated, apply_partner_filter
 from backend.schemas import DashboardStatsSchema, ContractExpirySchema
 from decimal import Decimal
@@ -107,6 +107,9 @@ def dashboard_view(request):
         })
     
     # Monta a resposta
+    user_count_query = db.query(func.count(User.id))
+    user_count = apply_partner_filter(user_count_query, User, user).scalar() or 0
+
     stats_schema = DashboardStatsSchema()
     stats_data = stats_schema.dump({
         'active_contracts': active_contracts,
@@ -115,7 +118,8 @@ def dashboard_view(request):
         'average_feedback': round(average_feedback, 2),
         'total_contracts_value': str(total_value),
         'total_billed_value': str(billed_value),
-        'total_balance': str(balance)
+        'total_balance': str(balance),
+        'user_count': user_count
     })
     
     return {

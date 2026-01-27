@@ -5,9 +5,11 @@ Endpoints para login e gerenciamento de usuários
 from pyramid.view import view_config, view_defaults
 from pyramid.response import Response
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
 from backend.models import User, UserRole
 from backend.schemas import UserSchema, UserLoginSchema, UserCreateSchema
 from backend.auth import AuthService
+from backend.auth_helpers import require_admin_global
 import json
 
 
@@ -91,6 +93,7 @@ class AuthViews:
             - user: Dados do usuário criado
         """
         try:
+            require_admin_global(self.request)
             # Valida os dados de entrada
             schema = UserCreateSchema()
             data = schema.load(self.request.json_body)
@@ -98,12 +101,15 @@ class AuthViews:
             # Cria o hash da senha
             password_hash = AuthService.hash_password(data['password'])
             
-            # Cria o usuário
+            role_input = data.get('role', UserRole.USER_PARTNER.value)
+            if isinstance(role_input, str):
+                role_input = role_input.lower()
+            role_enum = UserRole(role_input)
             user = User(
                 username=data['username'],
                 email=data['email'],
                 password_hash=password_hash,
-                role=UserRole(data.get('role', UserRole.LEITURA.value))
+                role=role_enum
             )
             
             self.db.add(user)
@@ -128,6 +134,27 @@ class AuthViews:
             )
         except Exception as e:
             self.db.rollback()
+            return Response(
+                json.dumps({'error': str(e)}).encode('utf-8'),
+                status=400,
+                content_type='application/json; charset=utf-8'
+            )
+
+    @view_config(route_name='auth_users', request_method='GET')
+    def list_users(self):
+        """
+        GET /api/auth/users
+        Lista todos os usuários (apenas admin global)
+        """
+        try:
+            require_admin_global(self.request)
+            schema = UserSchema(many=True)
+            users = self.db.query(User).order_by(User.username).options(
+                # garante partner carregado para exibir na listagem
+                joinedload(User.partner)
+            ).all()
+            return {'users': schema.dump(users)}
+        except Exception as e:
             return Response(
                 json.dumps({'error': str(e)}).encode('utf-8'),
                 status=400,

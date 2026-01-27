@@ -262,6 +262,7 @@ class DashboardStatsSchema(Schema):
     total_contracts_value = fields.Decimal(as_string=True)
     total_billed_value = fields.Decimal(as_string=True)
     total_balance = fields.Decimal(as_string=True)
+    user_count = fields.Int()
 
 
 class ContractExpirySchema(Schema):

@@ -36,15 +36,15 @@ class UserRoleType(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
-        # Armazena como string (nome do enum ou valor)
-        return value.name if hasattr(value, "name") else str(value)
+        # Armazena como string (valor do enum)
+        return value.value if hasattr(value, "value") else str(value)
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
         # Tenta converter para enum UserRole, caso exista; caso contrário retorna string
         try:
-            return UserRole[value]
+            return UserRole(value)
         except Exception:
             return value
 
