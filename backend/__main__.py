@@ -7,7 +7,6 @@ import os
 from pathlib import Path
 from pyramid.paster import get_app, setup_logging
 from waitress import serve
-from backend.logging import bootstrap_logging
 
 
 def get_config_file():
@@ -46,7 +45,6 @@ def main():
     
     # Configura logging
     setup_logging(config_uri)
-    bootstrap_logging()
     
     # Cria a aplicação Pyramid
     # O app.py vai sobrescrever as configurações com variáveis de ambiente
