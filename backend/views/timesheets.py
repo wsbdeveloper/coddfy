@@ -3,12 +3,16 @@ Views de Timesheets/Histórico de Faturamentos
 Endpoints CRUD para gestão de timesheets
 """
 from pyramid.view import view_config, view_defaults
-from pyramid.response import Response
+from pyramid.response import Response, FileResponse
 from sqlalchemy.orm import joinedload
 from backend.models import Timesheet, Contract, Consultant, Client
 from backend.schemas import TimesheetSchema, TimesheetCreateSchema
 from backend.auth_helpers import require_authenticated, can_access_resource, apply_partner_filter
+from backend.storage import get_timesheet_file_path, save_timesheet_file
+from backend.logging_config import log_exception
+from marshmallow import ValidationError
 import json
+import uuid
 
 
 @view_defaults(renderer='json')
@@ -18,6 +22,16 @@ class TimesheetViews:
     def __init__(self, request):
         self.request = request
         self.db = request.dbsession
+
+    def _parse_uuid(self, value):
+        if isinstance(value, uuid.UUID):
+            return value
+        if isinstance(value, str):
+            try:
+                return uuid.UUID(value)
+            except ValueError:
+                return None
+        return None
     
     @view_config(route_name='timesheets', request_method='GET')
     def list_timesheets(self):
@@ -58,6 +72,15 @@ class TimesheetViews:
         # Serializa os dados
         schema = TimesheetSchema(many=True)
         return {'timesheets': schema.dump(timesheets)}
+
+    def _parse_timesheet_payload(self):
+        file_upload = None
+        if self.request.content_type and self.request.content_type.startswith('multipart/form-data'):
+            payload = {k: v for k, v in self.request.POST.items() if k != 'timesheet_file'}
+            file_upload = self.request.POST.get('timesheet_file')
+        else:
+            payload = self.request.json_body
+        return payload, file_upload
     
     @view_config(route_name='timesheet', request_method='GET')
     def get_timesheet(self):
@@ -70,7 +93,14 @@ class TimesheetViews:
         """
         user = require_authenticated(self.request)
         
-        timesheet_id = self.request.matchdict['id']
+        timesheet_id = self._parse_uuid(self.request.matchdict.get('id'))
+        if not timesheet_id:
+            return Response(
+                json.dumps({'error': 'ID de timesheet inválido'}).encode('utf-8'),
+                status=400,
+                content_type='application/json',
+                charset='utf-8'
+            )
         timesheet = self.db.query(Timesheet).options(
             joinedload(Timesheet.contract).joinedload(Contract.client)
         ).filter(
@@ -118,9 +148,13 @@ class TimesheetViews:
         user = require_authenticated(self.request)
         
         try:
-            # Valida os dados de entrada
             schema = TimesheetCreateSchema()
-            data = schema.load(self.request.json_body)
+            payload, file_upload = self._parse_timesheet_payload()
+            data = schema.load(payload)
+
+            if file_upload is not None and hasattr(file_upload, 'file'):
+                stored_name = save_timesheet_file(file_upload)
+                data['file_url'] = stored_name
             
             # Verifica se o contrato existe
             contract = self.db.query(Contract).options(
@@ -187,8 +221,16 @@ class TimesheetViews:
                 charset='utf-8'
             )
             
+        except ValidationError as e:
+            return Response(
+                json.dumps({'error': 'Dados inválidos', 'details': e.messages}).encode('utf-8'),
+                status=400,
+                content_type='application/json',
+                charset='utf-8'
+            )
         except Exception as e:
             self.db.rollback()
+            log_exception("failed to create timesheet", exc=e, context={'user_id': str(user.id)})
             return Response(
                 json.dumps({'error': str(e)}).encode('utf-8'),
                 status=400,
@@ -210,7 +252,14 @@ class TimesheetViews:
         """
         user = require_authenticated(self.request)
         
-        timesheet_id = self.request.matchdict['id']
+        timesheet_id = self._parse_uuid(self.request.matchdict.get('id'))
+        if not timesheet_id:
+            return Response(
+                json.dumps({'error': 'ID de timesheet inválido'}).encode('utf-8'),
+                status=400,
+                content_type='application/json',
+                charset='utf-8'
+            )
         timesheet = self.db.query(Timesheet).options(
             joinedload(Timesheet.contract).joinedload(Contract.client)
         ).filter(
@@ -236,7 +285,13 @@ class TimesheetViews:
                 )
         
         try:
-            data = self.request.json_body
+            payload, file_upload = self._parse_timesheet_payload()
+            schema = TimesheetCreateSchema(partial=True)
+            data = schema.load(payload)
+
+            if file_upload is not None and hasattr(file_upload, 'file'):
+                stored_name = save_timesheet_file(file_upload)
+                data['file_url'] = stored_name
             
             # Atualiza campos permitidos
             if 'file_url' in data:
@@ -268,8 +323,16 @@ class TimesheetViews:
             schema = TimesheetSchema()
             return schema.dump(timesheet)
             
+        except ValidationError as e:
+            return Response(
+                json.dumps({'error': 'Dados inválidos', 'details': e.messages}).encode('utf-8'),
+                status=400,
+                content_type='application/json',
+                charset='utf-8'
+            )
         except Exception as e:
             self.db.rollback()
+            log_exception("failed to update timesheet", exc=e, context={'user_id': str(user.id), 'timesheet_id': str(timesheet_id)})
             return Response(
                 json.dumps({'error': str(e)}).encode('utf-8'),
                 status=400,
@@ -288,7 +351,14 @@ class TimesheetViews:
         """
         user = require_authenticated(self.request)
         
-        timesheet_id = self.request.matchdict['id']
+        timesheet_id = self._parse_uuid(self.request.matchdict.get('id'))
+        if not timesheet_id:
+            return Response(
+                json.dumps({'error': 'ID de timesheet inválido'}).encode('utf-8'),
+                status=400,
+                content_type='application/json',
+                charset='utf-8'
+            )
         timesheet = self.db.query(Timesheet).options(
             joinedload(Timesheet.contract).joinedload(Contract.client)
         ).filter(
@@ -318,10 +388,62 @@ class TimesheetViews:
             return {'message': 'Timesheet removido com sucesso'}
         except Exception as e:
             self.db.rollback()
+            log_exception("failed to delete timesheet", exc=e, context={'user_id': str(user.id), 'timesheet_id': str(timesheet_id)})
             return Response(
                 json.dumps({'error': str(e)}).encode('utf-8'),
                 status=400,
                 charset='utf-8',
                 content_type='application/json'
             )
+
+    @view_config(route_name='timesheet_file', request_method='GET')
+    def download_timesheet(self):
+        user = require_authenticated(self.request)
+        timesheet_id = self._parse_uuid(self.request.matchdict.get('id'))
+        if not timesheet_id:
+            return Response(
+                json.dumps({'error': 'ID de timesheet inválido'}).encode('utf-8'),
+                status=400,
+                content_type='application/json',
+                charset='utf-8'
+            )
+        timesheet = self.db.query(Timesheet).options(
+            joinedload(Timesheet.contract).joinedload(Contract.client)
+        ).filter(
+            Timesheet.id == timesheet_id
+        ).first()
+
+        if not timesheet or not timesheet.file_url:
+            return Response(
+                json.dumps({'error': 'Arquivo de timesheet não encontrado'}).encode('utf-8'),
+                status=404,
+                content_type='application/json',
+                charset='utf-8'
+            )
+
+        if user.role.value != 'admin_global':
+            if not can_access_resource(user, timesheet.contract.client.partner_id):
+                return Response(
+                    json.dumps({'error': 'Você não tem permissão para acessar este arquivo'}).encode('utf-8'),
+                    status=403,
+                    content_type='application/json',
+                    charset='utf-8'
+                )
+
+        file_path = get_timesheet_file_path(timesheet.file_url)
+        if not file_path.exists():
+            return Response(
+                json.dumps({'error': 'Arquivo ausente no servidor'}).encode('utf-8'),
+                status=404,
+                content_type='application/json',
+                charset='utf-8'
+            )
+
+        response = FileResponse(
+            str(file_path),
+            request=self.request,
+            content_type='application/octet-stream'
+        )
+        response.headers['Content-Disposition'] = f'attachment; filename="{file_path.name}"'
+        return response
 

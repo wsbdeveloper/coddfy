@@ -5,7 +5,7 @@ Define a estrutura de entrada/saída da API
 from marshmallow import Schema, fields, validate, validates, ValidationError
 from marshmallow.fields import DateTime
 from datetime import datetime
-from backend.models import ContractStatus, UserRole
+from backend.models import ContractStatus, UserRole, UserAssignmentType
 
 
 class FlexibleDateTime(fields.DateTime):
@@ -60,6 +60,28 @@ class PartnerCreateSchema(Schema):
     is_active = fields.Bool(allow_none=True)
 
 
+# Client Schemas
+class ClientSchema(Schema):
+    """Schema para serialização de cliente"""
+    id = fields.UUID(dump_only=True)
+    name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+    cnpj = fields.Str(allow_none=True, validate=validate.Length(max=20))
+    razao_social = fields.Str(allow_none=True, validate=validate.Length(max=255))
+    partner_id = fields.UUID(required=True)
+    partner = fields.Nested(PartnerSchema, dump_only=True)
+    created_at = fields.DateTime(dump_only=True)
+    updated_at = fields.DateTime(dump_only=True)
+
+
+class ClientCreateSchema(Schema):
+    """Schema para criação de cliente"""
+    name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+    cnpj = fields.Str(allow_none=True, validate=validate.Length(max=20))
+    razao_social = fields.Str(allow_none=True, validate=validate.Length(max=255))
+    partner_id = fields.UUID(allow_none=True)  # Opcional, pode ser fornecido via partner (nome)
+    partner = fields.Str(allow_none=True, validate=validate.Length(min=1, max=255))  # Nome do parceiro como alternativa
+
+
 # User Schemas
 class UserSchema(Schema):
     """Schema para serialização de usuário"""
@@ -69,6 +91,9 @@ class UserSchema(Schema):
     role = fields.Method("get_role_value", validate=validate.OneOf([r.value for r in UserRole]))
     partner_id = fields.UUID(allow_none=True)
     partner = fields.Nested(PartnerSchema, dump_only=True)
+    assignment_type = fields.Str()
+    client_id = fields.UUID(allow_none=True)
+    client = fields.Nested(ClientSchema, dump_only=True, only=('id', 'name'))
     is_active = fields.Bool()
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
@@ -96,29 +121,9 @@ class UserCreateSchema(Schema):
     email = fields.Email(required=True)
     password = fields.Str(required=True, load_only=True, validate=validate.Length(min=6))
     role = fields.Str(validate=validate.OneOf([r.value for r in UserRole]))
+    assignment_type = fields.Str(validate=validate.OneOf([t.value for t in UserAssignmentType]))
     partner_id = fields.UUID(allow_none=True)  # NULL para admin_global
-
-
-# Client Schemas
-class ClientSchema(Schema):
-    """Schema para serialização de cliente"""
-    id = fields.UUID(dump_only=True)
-    name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
-    cnpj = fields.Str(allow_none=True, validate=validate.Length(max=20))
-    razao_social = fields.Str(allow_none=True, validate=validate.Length(max=255))
-    partner_id = fields.UUID(required=True)
-    partner = fields.Nested(PartnerSchema, dump_only=True)
-    created_at = fields.DateTime(dump_only=True)
-    updated_at = fields.DateTime(dump_only=True)
-
-
-class ClientCreateSchema(Schema):
-    """Schema para criação de cliente"""
-    name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
-    cnpj = fields.Str(allow_none=True, validate=validate.Length(max=20))
-    razao_social = fields.Str(allow_none=True, validate=validate.Length(max=255))
-    partner_id = fields.UUID(allow_none=True)  # Opcional, pode ser fornecido via partner (nome)
-    partner = fields.Str(allow_none=True, validate=validate.Length(min=1, max=255))  # Nome do parceiro como alternativa
+    client_id = fields.UUID(allow_none=True)
 
 
 # Installment Schemas

@@ -25,9 +25,16 @@ class ContractStatus(str, enum.Enum):
 
 class UserRole(str, enum.Enum):
     """Níveis de acesso do sistema"""
-    ADMIN_GLOBAL = "admin_global"  # Admin que vê tudo
-    ADMIN_PARTNER = "admin_partner"  # Admin de um parceiro específico
-    USER_PARTNER = "user_partner"  # Usuário comum de um parceiro
+    ADMIN_GLOBAL = "admin_global"
+    ADMIN_PARTNER = "admin_partner"
+    USER_PARTNER = "user_partner"
+
+
+class UserAssignmentType(str, enum.Enum):
+    """Classificação da origem do usuário"""
+    PARTNER = "partner"
+    CLIENT = "client"
+    INTERNAL = "internal"
 
 
 class UserRoleType(TypeDecorator):
@@ -87,17 +94,22 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     role = Column(UserRoleType(), default=UserRole.USER_PARTNER, nullable=False)
-    partner_id = Column(UUID(as_uuid=True), ForeignKey('partners.id'), nullable=True)  # NULL para admin global
+    assignment_type = Column(SQLEnum(UserAssignmentType), default=UserAssignmentType.PARTNER, nullable=False)
+    partner_id = Column(UUID(as_uuid=True), ForeignKey('partners.id'), nullable=True)
+    client_id = Column(UUID(as_uuid=True), ForeignKey('clients.id'), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
     # Relacionamentos
     partner = relationship("Partner", back_populates="users")
+    client = relationship("Client")
     feedbacks = relationship("ConsultantFeedback", back_populates="user")
 
     def __repr__(self):
-        return f"<User(username='{self.username}', role='{self.role}', partner_id='{self.partner_id}')>"
+        return (f"<User(username='{self.username}', role='{self.role}', "
+                f"assignment_type='{self.assignment_type}', partner_id='{self.partner_id}', "
+                f"client_id='{self.client_id}')>")
 
 
 class Client(Base):
@@ -287,6 +299,7 @@ class Timesheet(Base):
     approval_date = Column(DateTime, nullable=True)              # data da aprovação
     approved = Column(Boolean, default=False, nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relacionamentos
     contract = relationship("Contract", back_populates="timesheets")

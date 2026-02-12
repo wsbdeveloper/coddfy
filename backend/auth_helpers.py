@@ -2,6 +2,8 @@
 Helpers de autorização para multi-tenancy
 Funções para validar permissões e aplicar filtros automáticos por parceiro
 """
+import uuid
+
 from pyramid.httpexceptions import HTTPForbidden, HTTPUnauthorized
 from sqlalchemy.orm import Query
 from backend.models import UserRole, User, Partner
@@ -28,6 +30,12 @@ def get_current_user_from_request(request):
     user_id = payload.get('user_id')
     if not user_id:
         return None
+
+    if isinstance(user_id, str):
+        try:
+            user_id = uuid.UUID(user_id)
+        except ValueError:
+            return None
     
     user = request.dbsession.query(User).filter_by(id=user_id).first()
     return user

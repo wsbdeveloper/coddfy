@@ -22,39 +22,39 @@ services:
       - ccm_network
 
   # Backend Pyramid
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile.backend
-    container_name: ccm_backend
-    environment:
-      DATABASE_URL: postgresql://ccm_user:ccm_password@db:5432/ccm_db
-      JWT_SECRET: your-secret-key-change-in-production
-      JWT_ALGORITHM: HS256
-      JWT_EXPIRATION_HOURS: 24
-      APP_ENV: development
-      APP_HOST: 0.0.0.0
-      APP_PORT: 6543
-      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
-    ports:
-      - "6543:6543"
-    volumes:
-      - ./backend:/app/backend
-    depends_on:
-      db:
-        condition: service_healthy
-    working_dir: /app/backend
-    command: >
-      sh -c "
-        echo '🔄 Aguardando banco de dados...' &&
-        sleep 5 &&
-        echo '📦 Rodando migrações...' &&
-        alembic -c alembic.ini upgrade head &&
-        echo '🚀 Iniciando servidor backend...' &&
-        python -m backend
-      "
-    networks:
-      - ccm_network
+  #backend:
+  #  build:
+  #    context: .
+  #    dockerfile: Dockerfile.backend
+  #  container_name: ccm_backend
+  #  environment:
+  #    DATABASE_URL: postgresql://ccm_user:ccm_password@db:5432/ccm_db
+  #    JWT_SECRET: your-secret-key-change-in-production
+  #    JWT_ALGORITHM: HS256
+  #    JWT_EXPIRATION_HOURS: 24
+  #    APP_ENV: development
+  #    APP_HOST: 0.0.0.0
+  #    APP_PORT: 6543
+  #    CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+  #  ports:
+  #    - "6543:6543"
+  #  volumes:
+  #    - ./backend:/app/backend
+  #  depends_on:
+  #    db:
+  #      condition: service_healthy
+  #  working_dir: /app/backend
+  #  command: >
+  #    sh -c "
+  #      echo '🔄 Aguardando banco de dados...' &&
+  #      sleep 5 &&
+  #      echo '📦 Rodando migrações...' &&
+  #      alembic -c alembic.ini upgrade head &&
+  #      echo '🚀 Iniciando servidor backend...' &&
+  #      python -m backend
+  #    "
+  #  networks:
+  #    - ccm_network
 
   # Frontend React (desenvolvimento)
   #frontend:

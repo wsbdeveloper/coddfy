@@ -6,7 +6,7 @@ from pyramid.view import view_config, view_defaults
 from pyramid.response import Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
-from backend.models import User, UserRole
+from backend.models import User, UserRole, Client, UserAssignmentType
 from backend.schemas import UserSchema, UserLoginSchema, UserCreateSchema
 from backend.auth import AuthService
 from backend.auth_helpers import require_admin_global
@@ -98,9 +98,34 @@ class AuthViews:
             schema = UserCreateSchema()
             data = schema.load(self.request.json_body)
             
+            # Valida tipo de atribuição
+            assignment_type_input = data.get('assignment_type', UserAssignmentType.PARTNER.value)
+            if isinstance(assignment_type_input, str):
+                assignment_type_input = assignment_type_input.lower()
+            assignment_type = UserAssignmentType(assignment_type_input)
+            client_id = data.get('client_id')
+
+            if assignment_type == UserAssignmentType.CLIENT:
+                if not client_id:
+                    return Response(
+                        json.dumps({'error': 'client_id é obrigatório para usuários do tipo cliente'}).encode('utf-8'),
+                        status=400,
+                        content_type='application/json; charset=utf-8'
+                    )
+                client = self.db.query(Client).filter(Client.id == client_id).first()
+                if not client:
+                    return Response(
+                        json.dumps({'error': 'Cliente não encontrado'}).encode('utf-8'),
+                        status=404,
+                        content_type='application/json; charset=utf-8'
+                    )
+                partner_id = client.partner_id
+            else:
+                partner_id = data.get('partner_id')
+
             # Cria o hash da senha
             password_hash = AuthService.hash_password(data['password'])
-            
+
             role_input = data.get('role', UserRole.USER_PARTNER.value)
             if isinstance(role_input, str):
                 role_input = role_input.lower()
@@ -109,7 +134,10 @@ class AuthViews:
                 username=data['username'],
                 email=data['email'],
                 password_hash=password_hash,
-                role=role_enum
+                role=role_enum,
+                assignment_type=assignment_type,
+                partner_id=partner_id,
+                client_id=client_id if assignment_type == UserAssignmentType.CLIENT else None
             )
             
             self.db.add(user)

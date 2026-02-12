@@ -63,6 +63,7 @@ def includeme(config):
     # Rotas de timesheets/histórico de faturamentos
     config.add_route('timesheets', '/api/timesheets')
     config.add_route('timesheet', '/api/timesheets/{id}')
+    config.add_route('timesheet_file', '/api/timesheets/{id}/file')
     
     # Rotas de exportação
     config.add_route('export_installments_csv', '/api/installments/export/csv')
