@@ -35,7 +35,7 @@ trap cleanup SIGINT SIGTERM
 # Inicia o backend em background
 echo "🐍 Iniciando backend..."
 #cd /home/w3x7/Desktop/lab/portal-coddfy
-poetry run python -m backend > backend/backend.log 2>&1 &
+poetry run python -m backend
 BACKEND_PID=$!
 echo "   Backend PID: $BACKEND_PID"
 

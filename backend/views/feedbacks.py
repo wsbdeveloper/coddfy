@@ -16,7 +16,7 @@ from backend.auth_helpers import (
 from marshmallow import ValidationError
 
 
-@view_config(route_name='feedbacks_list', request_method='GET', renderer='json')
+@view_config(route_name='feedbacks_list', request_method=('GET', 'HEAD'), renderer='json')
 def list_feedbacks(request):
     """
     Lista feedbacks de consultores
