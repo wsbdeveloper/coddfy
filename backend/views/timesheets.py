@@ -2,6 +2,9 @@
 Views de Timesheets/Histórico de Faturamentos
 Endpoints CRUD para gestão de timesheets
 """
+from datetime import datetime
+import re
+
 from pyramid.view import view_config, view_defaults
 from pyramid.response import Response, FileResponse
 from sqlalchemy.orm import joinedload
@@ -22,6 +25,25 @@ class TimesheetViews:
     def __init__(self, request):
         self.request = request
         self.db = request.dbsession
+
+    def _slugify(self, value: str) -> str:
+        cleaned = re.sub(r'[^A-Za-z0-9]+', '_', value or '')
+        return cleaned.strip('_').lower()
+
+    def _build_download_filename(self, timesheet, file_path):
+        parts = []
+        if timesheet.contract and timesheet.contract.name:
+            parts.append(self._slugify(timesheet.contract.name))
+        if timesheet.consultant and timesheet.consultant.name:
+            parts.append(self._slugify(timesheet.consultant.name))
+        timestamp = timesheet.uploaded_at or datetime.utcnow()
+        parts.append(timestamp.strftime('%Y%m%d'))
+        parts.append('timesheet')
+        basename = '_'.join(p for p in parts if p)
+        if not basename:
+            basename = file_path.stem
+        extension = file_path.suffix or ''
+        return f"{basename}{extension}"
 
     def _parse_uuid(self, value):
         if isinstance(value, uuid.UUID):
@@ -102,7 +124,8 @@ class TimesheetViews:
                 charset='utf-8'
             )
         timesheet = self.db.query(Timesheet).options(
-            joinedload(Timesheet.contract).joinedload(Contract.client)
+            joinedload(Timesheet.contract).joinedload(Contract.client),
+            joinedload(Timesheet.consultant)
         ).filter(
             Timesheet.id == timesheet_id
         ).first()
@@ -444,6 +467,7 @@ class TimesheetViews:
             request=self.request,
             content_type='application/octet-stream'
         )
-        response.headers['Content-Disposition'] = f'attachment; filename="{file_path.name}"'
+        download_filename = self._build_download_filename(timesheet, file_path)
+        response.headers['Content-Disposition'] = f'attachment; filename="{download_filename}"'
         return response
 
