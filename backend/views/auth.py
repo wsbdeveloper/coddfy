@@ -6,11 +6,12 @@ from pyramid.view import view_config, view_defaults
 from pyramid.response import Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
-from backend.models import User, UserRole, Client, UserAssignmentType
+from backend.models import User, UserRole, Client, UserAssignmentType, ConsultantFeedback
 from backend.schemas import UserSchema, UserLoginSchema, UserCreateSchema
 from backend.auth import AuthService
 from backend.auth_helpers import require_admin_global
 import json
+import uuid
 
 
 @view_defaults(renderer='json')
@@ -183,6 +184,117 @@ class AuthViews:
             ).all()
             return {'users': schema.dump(users)}
         except Exception as e:
+            return Response(
+                json.dumps({'error': str(e)}).encode('utf-8'),
+                status=400,
+                content_type='application/json; charset=utf-8'
+            )
+
+    @view_config(route_name='auth_user', request_method='GET')
+    def get_user(self):
+        """
+        GET /api/auth/users/{id}
+        Retorna detalhes de um usuário específico (apenas admin global)
+        
+        Returns:
+            Dados do usuário
+        """
+        try:
+            require_admin_global(self.request)
+            user_id_str = self.request.matchdict['id']
+            
+            # Converte string para UUID
+            try:
+                user_id = uuid.UUID(user_id_str)
+            except ValueError:
+                return Response(
+                    json.dumps({'error': 'ID de usuário inválido'}).encode('utf-8'),
+                    status=400,
+                    content_type='application/json; charset=utf-8'
+                )
+            
+            user = self.db.query(User).options(
+                joinedload(User.partner)
+            ).filter(
+                User.id == user_id
+            ).first()
+            
+            if not user:
+                return Response(
+                    json.dumps({'error': 'Usuário não encontrado'}).encode('utf-8'),
+                    status=404,
+                    content_type='application/json; charset=utf-8'
+                )
+            
+            schema = UserSchema()
+            return schema.dump(user)
+        except Exception as e:
+            return Response(
+                json.dumps({'error': str(e)}).encode('utf-8'),
+                status=400,
+                content_type='application/json; charset=utf-8'
+            )
+
+    @view_config(route_name='auth_user', request_method='DELETE')
+    def delete_user(self):
+        """
+        DELETE /api/auth/users/{id}
+        Remove um usuário (apenas admin global)
+        
+        Returns:
+            Mensagem de confirmação
+        """
+        try:
+            require_admin_global(self.request)
+            user_id_str = self.request.matchdict['id']
+            
+            # Converte string para UUID
+            try:
+                user_id = uuid.UUID(user_id_str)
+            except ValueError:
+                return Response(
+                    json.dumps({'error': 'ID de usuário inválido'}).encode('utf-8'),
+                    status=400,
+                    content_type='application/json; charset=utf-8'
+                )
+            
+            user = self.db.query(User).filter(
+                User.id == user_id
+            ).first()
+            
+            if not user:
+                return Response(
+                    json.dumps({'error': 'Usuário não encontrado'}).encode('utf-8'),
+                    status=404,
+                    content_type='application/json; charset=utf-8'
+                )
+            
+            # Verifica se há feedbacks associados
+            feedbacks_count = self.db.query(ConsultantFeedback).filter(
+                ConsultantFeedback.user_id == user_id
+            ).count()
+            
+            if feedbacks_count > 0:
+                return Response(
+                    json.dumps({
+                        'error': f'Não é possível excluir usuário com {feedbacks_count} feedback(s) associado(s)'
+                    }).encode('utf-8'),
+                    status=400,
+                    content_type='application/json; charset=utf-8'
+                )
+            
+            self.db.delete(user)
+            return {'message': 'Usuário removido com sucesso'}
+            
+        except IntegrityError as e:
+            self.db.rollback()
+            return Response(
+                json.dumps({'error': 'Não é possível excluir usuário devido a dependências no sistema'}).encode('utf-8'),
+                status=400,
+                content_type='application/json; charset=utf-8'
+            )
+        except Exception as e:
+            self.db.rollback()
             return Response(
                 json.dumps({'error': str(e)}).encode('utf-8'),
                 status=400,

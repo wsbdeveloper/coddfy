@@ -26,6 +26,7 @@ def includeme(config):
     config.add_route('auth_login', '/api/auth/login')
     config.add_route('auth_register', '/api/auth/register')
     config.add_route('auth_users', '/api/auth/users')
+    config.add_route('auth_user', '/api/auth/users/{id}')
     
     # Rotas do dashboard
     config.add_route('dashboard', '/api/dashboard')
