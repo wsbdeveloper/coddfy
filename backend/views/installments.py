@@ -525,10 +525,14 @@ class InstallmentViews:
         Método auxiliar para atualizar o valor faturado do contrato
         Soma todas as parcelas marcadas como 'billed=True'
         """
+        # Garante que o contract está na sessão antes de fazer a query
+        contract = self.db.merge(contract)
+        contract_id = contract.id
+        
         total_billed = self.db.query(
             func.sum(Installment.value)
         ).filter(
-            Installment.contract_id == contract.id,
+            Installment.contract_id == contract_id,
             Installment.billed == True
         ).scalar() or 0
         
