@@ -225,7 +225,7 @@ class InstallmentViews:
         user = require_authenticated(self.request)
         installment_id = self.request.matchdict['id']
         installment = self.db.query(Installment).options(
-            joinedload(Installment.contract)
+            joinedload(Installment.contract).joinedload(Contract.client)
         ).filter(
             Installment.id == installment_id
         ).first()
@@ -271,7 +271,9 @@ class InstallmentViews:
             data = self.request.json_body
             
             # Valida se o contrato existe
-            contract = self.db.query(Contract).filter(
+            contract = self.db.query(Contract).options(
+                joinedload(Contract.client)
+            ).filter(
                 Contract.id == data['contract_id']
             ).first()
             if not contract:
@@ -349,7 +351,7 @@ class InstallmentViews:
         user = require_authenticated(self.request)
         installment_id = self.request.matchdict['id']
         installment = self.db.query(Installment).options(
-            joinedload(Installment.contract)
+            joinedload(Installment.contract).joinedload(Contract.client)
         ).filter(
             Installment.id == installment_id
         ).first()
@@ -407,7 +409,7 @@ class InstallmentViews:
         user = require_authenticated(self.request)
         installment_id = self.request.matchdict['id']
         installment = self.db.query(Installment).options(
-            joinedload(Installment.contract)
+            joinedload(Installment.contract).joinedload(Contract.client)
         ).filter(
             Installment.id == installment_id
         ).first()
@@ -478,7 +480,9 @@ class InstallmentViews:
         """
         user = require_authenticated(self.request)
         installment_id = self.request.matchdict['id']
-        installment = self.db.query(Installment).filter(
+        installment = self.db.query(Installment).options(
+            joinedload(Installment.contract).joinedload(Contract.client)
+        ).filter(
             Installment.id == installment_id
         ).first()
         
