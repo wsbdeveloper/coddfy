@@ -12,6 +12,7 @@ from backend.auth_helpers import require_authenticated, apply_partner_filter, ca
 from backend.schemas import InstallmentSchema
 import json
 from datetime import datetime
+from decimal import Decimal
 
 
 @view_defaults(renderer='json')
@@ -292,17 +293,76 @@ class InstallmentViews:
                     charset='utf-8'
                 )
             
+            # Converte e valida os dados
+            value = data['value']
+            if isinstance(value, str):
+                value = Decimal(value)
+            elif not isinstance(value, (Decimal, float, int)):
+                return Response(
+                    json.dumps({'error': 'Valor inválido. Deve ser um número'}).encode('utf-8'),
+                    status=400,
+                    content_type='application/json',
+                    charset='utf-8'
+                )
+            
+            # Converte payment_term para int se for string
+            payment_term = data.get('payment_term')
+            if payment_term is not None:
+                if isinstance(payment_term, str):
+                    try:
+                        payment_term = int(payment_term)
+                    except ValueError:
+                        return Response(
+                            json.dumps({'error': 'payment_term deve ser um número inteiro'}).encode('utf-8'),
+                            status=400,
+                            content_type='application/json',
+                            charset='utf-8'
+                        )
+            
+            # Converte datas se forem strings
+            def parse_date(date_value):
+                if date_value is None:
+                    return None
+                if isinstance(date_value, datetime):
+                    return date_value
+                if isinstance(date_value, str):
+                    try:
+                        # Remove o Z do final se existir
+                        if date_value.endswith('Z'):
+                            date_value = date_value[:-1]
+                        
+                        # Tenta parse ISO format (YYYY-MM-DDTHH:MM:SS ou YYYY-MM-DDTHH:MM:SS.mmm)
+                        if 'T' in date_value:
+                            # Remove milissegundos se existirem
+                            if '.' in date_value:
+                                date_value = date_value.split('.')[0]
+                            # Parse formato ISO sem timezone
+                            return datetime.strptime(date_value, '%Y-%m-%dT%H:%M:%S')
+                        # Tenta formato YYYY-MM-DD
+                        return datetime.strptime(date_value, '%Y-%m-%d')
+                    except ValueError:
+                        # Tenta outros formatos comuns
+                        try:
+                            return datetime.strptime(date_value, '%Y-%m-%d %H:%M:%S')
+                        except ValueError:
+                            return None
+                return None
+            
+            billing_date = parse_date(data.get('billing_date'))
+            expected_payment_date = parse_date(data.get('expected_payment_date'))
+            payment_date = parse_date(data.get('payment_date'))
+            
             # Cria a parcela
             installment = Installment(
                 contract_id=data['contract_id'],
                 month=data['month'],
-                value=data['value'],
+                value=value,
                 billed=False,
                 invoice_number=data.get('invoice_number'),
-                billing_date=data.get('billing_date'),
-                payment_term=data.get('payment_term'),
-                expected_payment_date=data.get('expected_payment_date'),
-                payment_date=data.get('payment_date')
+                billing_date=billing_date,
+                payment_term=payment_term,
+                expected_payment_date=expected_payment_date,
+                payment_date=payment_date
             )
             
             # Associa o contrato diretamente para garantir o relacionamento
