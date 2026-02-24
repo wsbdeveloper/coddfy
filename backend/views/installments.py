@@ -311,8 +311,9 @@ class InstallmentViews:
             self.db.add(installment)
             self.db.flush()
             
-            # Atualiza o billed_value e balance do contrato
-            self._update_contract_billed_value(contract)
+            # Não precisa atualizar billed_value pois a nova parcela tem billed=False
+            # O billed_value só muda quando uma parcela é marcada como faturada
+            # Apenas atualiza o balance se necessário (mas como billed=False, não afeta)
             
             # Serializa os dados da parcela
             result_schema = InstallmentSchema()
@@ -525,10 +526,10 @@ class InstallmentViews:
         Método auxiliar para atualizar o valor faturado do contrato
         Soma todas as parcelas marcadas como 'billed=True'
         """
-        # Garante que o contract está na sessão antes de fazer a query
-        contract = self.db.merge(contract)
-        contract_id = contract.id
+        # Usa o ID do contract para fazer a query
+        contract_id = contract.id if hasattr(contract, 'id') else contract
         
+        # Faz a query para calcular o total faturado
         total_billed = self.db.query(
             func.sum(Installment.value)
         ).filter(
@@ -536,6 +537,12 @@ class InstallmentViews:
             Installment.billed == True
         ).scalar() or 0
         
-        contract.billed_value = total_billed
-        contract.balance = contract.total_value - contract.billed_value
+        # Busca o contract novamente na sessão para garantir que está anexado
+        contract_in_session = self.db.query(Contract).filter(
+            Contract.id == contract_id
+        ).first()
+        
+        if contract_in_session:
+            contract_in_session.billed_value = total_billed
+            contract_in_session.balance = contract_in_session.total_value - total_billed
 
