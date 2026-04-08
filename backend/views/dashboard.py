@@ -73,12 +73,10 @@ def dashboard_view(request):
     )
     pending_payment = apply_partner_filter(pending_payment_query, Client, user).scalar() or Decimal('0')
 
-    to_bill_query = db.query(
-        func.sum(Installment.value)
-    ).join(Contract).join(Client).filter(
-        Installment.billing_date.is_(None)
-    )
-    to_bill = apply_partner_filter(to_bill_query, Client, user).scalar() or Decimal('0')
+    # "A faturar" (PRD): total dos contratos menos pago e pendente de pagamento (parcelas)
+    to_bill_formula = total_value - paid_value - pending_payment
+    if to_bill_formula < 0:
+        to_bill_formula = Decimal('0')
     
     # Contratos próximos do vencimento (próximos 30 dias)
     today = datetime.utcnow()
@@ -130,7 +128,8 @@ def dashboard_view(request):
             'billed_value': str(billed_value),
             'paid_value': str(paid_value),
             'pending_payment': str(pending_payment),
-            'to_bill': str(to_bill),
+            'pending_payment_value': str(pending_payment),
+            'to_bill': str(to_bill_formula),
             'balance': str(balance),
             'billed_percentage': round(float(billed_value / total_value * 100), 2) if total_value > 0 else 0
         }

@@ -227,7 +227,8 @@ class TimesheetViews:
                 file_url=data.get('file_url'),
                 hours=data.get('hours') or 0,
                 approver=data.get('approver'),
-                approval_date=data.get('approval_date')
+                approval_date=data.get('approval_date'),
+                filled_at=data.get('filled_at'),
             )
             
             self.db.add(timesheet)
@@ -325,6 +326,8 @@ class TimesheetViews:
                 timesheet.approver = data['approver']
             if 'approval_date' in data:
                 timesheet.approval_date = data['approval_date']
+            if 'filled_at' in data:
+                timesheet.filled_at = data['filled_at']
             if 'consultant_id' in data:
                 if data['consultant_id']:
                     consultant = self.db.query(Consultant).filter(

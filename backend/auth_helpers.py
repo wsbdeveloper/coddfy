@@ -171,6 +171,42 @@ def can_manage_users(user: User):
     return user.role in [UserRole.ADMIN_GLOBAL, UserRole.ADMIN_PARTNER]
 
 
+def _role_str(user: User) -> str:
+    r = user.role
+    return r.value if hasattr(r, 'value') else str(r)
+
+
+def can_reset_other_user_password(actor: User, target: User):
+    """
+    Indica se o ator pode definir uma nova senha para o usuário alvo (reset por owner).
+
+    Regras:
+        - Apenas admin_global ou admin_partner (owners) podem redefinir senha de terceiros.
+        - Não pode redefinir a própria senha por este fluxo.
+        - Não pode redefinir senha de outro admin_global.
+        - Admin de parceiro não pode redefinir senha de outro admin de parceiro (nem de admin global).
+        - Admin de parceiro só pode redefinir usuários do mesmo parceiro.
+        - Admin global pode redefinir admin de parceiro e usuários comuns (não outros globais).
+
+    Returns:
+        (bool, str|None): (permitido, mensagem de erro se não permitido)
+    """
+    ar = _role_str(actor)
+    tr = _role_str(target)
+    if ar not in (UserRole.ADMIN_GLOBAL.value, UserRole.ADMIN_PARTNER.value):
+        return False, 'Apenas administradores (global ou de parceiro) podem redefinir senhas.'
+    if str(actor.id) == str(target.id):
+        return False, 'Não é possível redefinir a própria senha por este endpoint.'
+    if tr == UserRole.ADMIN_GLOBAL.value:
+        return False, 'Não é permitido redefinir senha de outro administrador global.'
+    if tr == UserRole.ADMIN_PARTNER.value and ar != UserRole.ADMIN_GLOBAL.value:
+        return False, 'Não é permitido redefinir senha de outro administrador de parceiro.'
+    if ar == UserRole.ADMIN_PARTNER.value:
+        if not actor.partner_id or str(actor.partner_id) != str(target.partner_id):
+            return False, 'Você só pode redefinir senhas de usuários do seu parceiro.'
+    return True, None
+
+
 def auto_assign_partner(user: User, data: dict):
     """
     Atribui automaticamente o partner_id aos dados se necessário

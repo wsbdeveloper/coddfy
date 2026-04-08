@@ -114,9 +114,10 @@ class InstallmentViews:
         # Total inadimplente (parcelas com data prevista vencida e sem pagamento)
         today = datetime.utcnow()
         overdue_filter = (
+            Installment.billed == False,
             Installment.expected_payment_date.isnot(None),
             Installment.expected_payment_date < today,
-            Installment.payment_date.is_(None)
+            Installment.payment_date.is_(None),
         )
 
         total_overdue = self.db.query(
@@ -455,10 +456,10 @@ class InstallmentViews:
                 charset='utf-8'
             )
     
-    @view_config(route_name='installment', request_method='PUT')
+    @view_config(route_name='installment', request_method=('PUT', 'PATCH'))
     def update_installment(self):
         """
-        PUT /api/installments/{id}
+        PUT ou PATCH /api/installments/{id}
         Atualiza uma parcela existente
         
         Body:

@@ -2,7 +2,9 @@
 Schemas de validação usando Marshmallow
 Define a estrutura de entrada/saída da API
 """
-from marshmallow import Schema, fields, validate, validates, ValidationError
+from decimal import Decimal
+
+from marshmallow import Schema, fields, validate, validates, validates_schema, ValidationError, post_load
 from marshmallow.fields import DateTime
 from datetime import datetime
 from backend.models import ContractStatus, UserRole, UserAssignmentType
@@ -48,6 +50,7 @@ class PartnerSchema(Schema):
     is_active = fields.Bool()
     is_strategic = fields.Bool()
     status = fields.Str(allow_none=True, validate=validate.Length(max=50))
+    logo_url = fields.Str(allow_none=True, validate=validate.Length(max=500))
     created_at = fields.DateTime(dump_only=True)
     updated_at = fields.DateTime(dump_only=True)
 
@@ -58,6 +61,7 @@ class PartnerCreateSchema(Schema):
     is_strategic = fields.Bool(allow_none=True)
     status = fields.Str(allow_none=True, validate=validate.Length(max=50))
     is_active = fields.Bool(allow_none=True)
+    logo_url = fields.Str(allow_none=True, validate=validate.Length(max=500))
 
 
 # Client Schemas
@@ -124,6 +128,11 @@ class UserCreateSchema(Schema):
     assignment_type = fields.Str(validate=validate.OneOf([t.value for t in UserAssignmentType]))
     partner_id = fields.UUID(allow_none=True)  # NULL para admin_global
     client_id = fields.UUID(allow_none=True)
+
+
+class UserPasswordResetSchema(Schema):
+    """Schema para redefinição de senha por administrador"""
+    new_password = fields.Str(required=True, load_only=True, validate=validate.Length(min=6))
 
 
 # Installment Schemas
@@ -229,6 +238,11 @@ class ContractSchema(Schema):
         validate=validate.OneOf(['a_vista', 'parcelado'])
     )
     responsible_name = fields.Str(required=True, validate=validate.Length(min=1, max=255))
+
+    contract_type = fields.Str(allow_none=True, validate=validate.Length(max=50))
+    estimated_monthly_hours = fields.Decimal(allow_none=True, as_string=True)
+    duration_months = fields.Int(allow_none=True)
+    total_hours_contracted = fields.Decimal(allow_none=True, as_string=True)
     
     # Nested relationships
     client = fields.Nested(ClientSchema, dump_only=True)
@@ -249,12 +263,46 @@ class ContractCreateSchema(Schema):
     total_value = fields.Decimal(required=True, as_string=True)
     status = fields.Str(validate=validate.OneOf([s.value for s in ContractStatus]))
     end_date = FlexibleDateTime(required=True)
+
+    contract_type = fields.Str(
+        allow_none=True,
+        validate=validate.OneOf(['body_shop_recorrente', 'time_material', 'projeto']),
+    )
+    estimated_monthly_hours = fields.Decimal(allow_none=True, as_string=True)
+    duration_months = fields.Int(allow_none=True, validate=validate.Range(min=1))
+    total_hours_contracted = fields.Decimal(allow_none=True, as_string=True)
     
     @validates('total_value')
     def validate_total_value(self, value):
         """Valida se o valor total é positivo"""
         if value <= 0:
             raise ValidationError('O valor total deve ser maior que zero')
+
+    @validates_schema
+    def validate_contract_type_fields(self, data, **kwargs):
+        ct = data.get('contract_type')
+        if ct is None:
+            return
+        if ct == 'body_shop_recorrente':
+            if data.get('estimated_monthly_hours') is None or data.get('duration_months') is None:
+                raise ValidationError(
+                    'Para body_shop_recorrente informe estimated_monthly_hours e duration_months.',
+                )
+        elif ct in ('time_material', 'projeto'):
+            if data.get('total_hours_contracted') is None:
+                raise ValidationError(
+                    'Para time_material ou projeto informe total_hours_contracted.',
+                )
+
+    @post_load
+    def apply_total_hours(self, data, **kwargs):
+        ct = data.get('contract_type')
+        if ct == 'body_shop_recorrente':
+            emh = data.get('estimated_monthly_hours')
+            dm = data.get('duration_months')
+            if emh is not None and dm is not None:
+                data['total_hours_contracted'] = Decimal(str(emh)) * dm
+        return data
 
 
 # Dashboard Schemas
@@ -292,7 +340,13 @@ class TimesheetSchema(Schema):
     approval_date = FlexibleDateTime(allow_none=True)
     approved = fields.Bool(dump_only=True)
     uploaded_at = fields.DateTime(dump_only=True)
+    created_at = fields.DateTime(dump_only=True)
+    filled_at = fields.Method('dump_filled_at', dump_only=True)
     contract = fields.Nested(ContractSimpleSchema, dump_only=True)
+
+    def dump_filled_at(self, obj):
+        dt = getattr(obj, 'filled_at', None) or getattr(obj, 'uploaded_at', None)
+        return dt.isoformat() if dt else None
 
 
 class TimesheetCreateSchema(Schema):
@@ -303,4 +357,5 @@ class TimesheetCreateSchema(Schema):
     hours = fields.Decimal(allow_none=True, as_string=True)
     approver = fields.Str(allow_none=True, validate=validate.Length(max=255))
     approval_date = FlexibleDateTime(allow_none=True)
+    filled_at = FlexibleDateTime(allow_none=True)
 

@@ -7,9 +7,11 @@ from pyramid.response import Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from backend.models import User, UserRole, Client, UserAssignmentType, ConsultantFeedback
-from backend.schemas import UserSchema, UserLoginSchema, UserCreateSchema
+from backend.schemas import UserSchema, UserLoginSchema, UserCreateSchema, UserPasswordResetSchema
 from backend.auth import AuthService
-from backend.auth_helpers import require_admin_global
+from backend.auth_helpers import require_admin_global, require_authenticated, can_reset_other_user_password
+from datetime import datetime
+from marshmallow import ValidationError as MarshmallowValidationError
 import json
 import uuid
 
@@ -184,6 +186,69 @@ class AuthViews:
             ).all()
             return {'users': schema.dump(users)}
         except Exception as e:
+            return Response(
+                json.dumps({'error': str(e)}).encode('utf-8'),
+                status=400,
+                content_type='application/json; charset=utf-8'
+            )
+
+    @view_config(route_name='auth_user_reset_password', request_method='POST')
+    def reset_user_password(self):
+        """
+        POST /api/auth/users/{id}/reset-password
+        Define nova senha para um usuário. Apenas owners (admin global ou admin de parceiro),
+        com as restrições em can_reset_other_user_password (não altera outros owners conforme regra).
+        """
+        try:
+            actor = require_authenticated(self.request)
+            user_id_str = self.request.matchdict['id']
+            try:
+                user_id = uuid.UUID(user_id_str)
+            except ValueError:
+                return Response(
+                    json.dumps({'error': 'ID de usuário inválido'}).encode('utf-8'),
+                    status=400,
+                    content_type='application/json; charset=utf-8'
+                )
+
+            target = self.db.query(User).filter(User.id == user_id).first()
+            if not target:
+                return Response(
+                    json.dumps({'error': 'Usuário não encontrado'}).encode('utf-8'),
+                    status=404,
+                    content_type='application/json; charset=utf-8'
+                )
+
+            allowed, err_msg = can_reset_other_user_password(actor, target)
+            if not allowed:
+                return Response(
+                    json.dumps({'error': err_msg}).encode('utf-8'),
+                    status=403,
+                    content_type='application/json; charset=utf-8'
+                )
+
+            schema = UserPasswordResetSchema()
+            body = self.request.json_body
+            if not isinstance(body, dict):
+                return Response(
+                    json.dumps({'error': 'JSON inválido'}).encode('utf-8'),
+                    status=400,
+                    content_type='application/json; charset=utf-8'
+                )
+            data = schema.load(body)
+            target.password_hash = AuthService.hash_password(data['new_password'])
+            target.updated_at = datetime.utcnow()
+            self.db.flush()
+
+            return {'message': 'Senha atualizada com sucesso'}
+        except MarshmallowValidationError as e:
+            return Response(
+                json.dumps({'error': 'Dados inválidos', 'details': e.messages}).encode('utf-8'),
+                status=400,
+                content_type='application/json; charset=utf-8'
+            )
+        except Exception as e:
+            self.db.rollback()
             return Response(
                 json.dumps({'error': str(e)}).encode('utf-8'),
                 status=400,

@@ -1,0 +1,208 @@
+{
+  "base_path": "/api",
+  "auth": "Authorization: Bearer <JWT>",
+
+  "auth_password_reset": {
+    "POST /api/auth/users/{id}/reset-password": {
+      "headers": "Authorization: Bearer <JWT>",
+      "body": { "new_password": "string, mínimo 6 caracteres" },
+      "response_200": { "message": "Senha atualizada com sucesso" },
+      "quem_pode": "Apenas owners: admin_global ou admin_partner",
+      "restricoes": [
+        "Não redefine a própria senha por este endpoint",
+        "Não redefine senha de outro admin_global",
+        "Admin de parceiro não redefine senha de outro admin_partner nem de admin_global",
+        "Admin de parceiro só redefine usuários do mesmo partner_id",
+        "Admin global pode redefinir admin_partner e user_partner"
+      ]
+    }
+  },
+
+  "ui_password_reset_screen": {
+    "titulo_sugerido": "Redefinir senha",
+    "descricao_curta": "Tela ou modal para um owner definir uma nova senha para outro usuário (sem fluxo de e-mail).",
+    "entrada_na_navegacao": [
+      "Lista de usuários: ação 'Redefinir senha' na linha (apenas se canShowResetPassword(actor, target) for true).",
+      "Detalhe do usuário: botão secundário 'Redefinir senha' nas mesmas condições."
+    ],
+    "dados_necessarios_do_usuario_alvo": {
+      "id": "UUID — vai na URL",
+      "username": "exibir no cabeçalho do modal ('Usuário: @username')",
+      "email": "opcional na UI",
+      "role": "admin_global | admin_partner | user_partner — usar nas regras de visibilidade",
+      "partner_id": "comparar com o partner_id do usuário logado quando actor é admin_partner"
+    },
+    "dados_do_usuario_logado_actor": {
+      "role": "obrigatório para regras",
+      "partner_id": "obrigatório se role for admin_partner",
+      "id": "para comparar com target.id e bloquear auto-reset na UI"
+    },
+    "regra_ui_mostrar_acao_reset": {
+      "expressao": "Mostrar botão 'Redefinir senha' somente quando todas forem verdadeiras:",
+      "checks": [
+        "actor.role é 'admin_global' OU 'admin_partner'",
+        "target.id !== actor.id",
+        "target.role !== 'admin_global'",
+        "SE actor.role === 'admin_partner' ENTÃO target.role !== 'admin_partner' E target.partner_id === actor.partner_id",
+        "SE actor.role === 'admin_global' E target.role === 'admin_partner' ENTÃO permitido (botão visível)"
+      ],
+      "nota": "Mesmo escondendo o botão, trate 403 da API (ex.: dados desatualizados)."
+    },
+    "layout_sugerido": {
+      "tipo": "modal_dialog ou página dedicada /usuarios/:id/redefinir-senha",
+      "campos": [
+        {
+          "name": "new_password",
+          "label": "Nova senha",
+          "tipo": "password",
+          "obrigatorio": true,
+          "validacao_cliente": "mínimo 6 caracteres (igual ao backend)",
+          "extras_opcionais": [
+            "Campo 'Confirmar nova senha' — validar igualdade antes do submit (só na UI)."
+          ]
+        }
+      ],
+      "botoes": [
+        { "id": "cancelar", "acao": "fechar sem chamar API" },
+        { "id": "salvar", "acao": "POST reset-password", "desabilitar_ate": "form válido e não loading" }
+      ],
+      "texto_ajuda": "A senha será aplicada imediatamente. O usuário poderá entrar com a nova senha no próximo login."
+    },
+    "chamada_http": {
+      "method": "POST",
+      "url_template": "{baseUrl}/api/auth/users/{userId}/reset-password",
+      "exemplo_url": "/api/auth/users/550e8400-e29b-41d4-a716-446655440000/reset-password",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer <access_token>"
+      },
+      "body_json": {
+        "new_password": "<string>"
+      }
+    },
+    "respostas_e_tratamento": {
+      "200": {
+        "body": { "message": "Senha atualizada com sucesso" },
+        "ui": "Toast de sucesso; fechar modal; opcional: invalidar cache da lista de usuários."
+      },
+      "400": {
+        "causas": ["JSON inválido", "new_password ausente ou < 6 chars"],
+        "body_tipico": { "error": "string", "details": "objeto marshmallow opcional" },
+        "ui": "Exibir error ou primeiro campo de details."
+      },
+      "401": {
+        "causa": "Token ausente/expirado",
+        "ui": "Redirecionar para login."
+      },
+      "403": {
+        "causa": "Regra de owner / alvo proibido / parceiro diferente",
+        "body_tipico": { "error": "mensagem em português do backend" },
+        "ui": "Toast ou alert com error; não retry."
+      },
+      "404": {
+        "causa": "userId inexistente",
+        "ui": "Mensagem 'Usuário não encontrado'."
+      }
+    },
+    "fluxo_resumido": [
+      "1. Owner abre ação em um usuário elegível.",
+      "2. Preenche nova senha (+ confirmação se quiser).",
+      "3. POST com JWT.",
+      "4. Sucesso → feedback e fecha; erro → mensagem conforme status."
+    ],
+    "lista_usuarios_api_atual": {
+      "nota": "GET /api/auth/users hoje exige admin_global. Se admin_partner não tiver listagem, a tela pode nascer só no contexto onde o front já tem o target (ex.: gestão interna do parceiro) ou será preciso estender a API de listagem depois."
+    }
+  },
+
+  "dashboard": {
+    "GET /api/dashboard": {
+      "financial_summary": {
+        "total_value": "string (decimal) — soma total_value dos contratos",
+        "billed_value": "string — billed_value agregado dos contratos",
+        "paid_value": "string — soma parcelas com payment_date preenchido",
+        "pending_payment": "string — soma parcelas com billing_date e sem payment_date",
+        "pending_payment_value": "string — alias de pending_payment (compatível com UI)",
+        "to_bill": "string — PRD: max(0, total_value - paid_value - pending_payment)",
+        "balance": "string — saldo agregado dos contratos",
+        "billed_percentage": "number"
+      }
+    }
+  },
+
+  "contracts": {
+    "GET /api/contracts": "lista com novos campos opcionais em cada contrato",
+    "GET /api/contracts/{id}": "detalhe",
+    "POST /api/contracts": {
+      "body_json": {
+        "name": "string",
+        "client_id": "uuid",
+        "total_value": "decimal string",
+        "responsible_name": "string",
+        "payment_method": "a_vista | parcelado",
+        "end_date": "ISO ou dd/mm/yyyy",
+        "status": "opcional",
+        "contract_type": "opcional: body_shop_recorrente | time_material | projeto",
+        "estimated_monthly_hours": "opcional — obrigatório se contract_type=body_shop_recorrente",
+        "duration_months": "opcional int — obrigatório se body_shop_recorrente",
+        "total_hours_contracted": "opcional — obrigatório para time_material e projeto; calculado automaticamente para body_shop (horas_mensais × meses)"
+      }
+    },
+    "PUT /api/contracts/{id}": {
+      "body_json": "parcial; inclui os mesmos campos financeiros/tipo acima; se contract_type=body_shop_recorrente e houver estimated_monthly_hours + duration_months, total_hours_contracted é recalculado"
+    }
+  },
+
+  "installments": {
+    "GET /api/installments": "lista parcelas; use expected_payment_date, billed, payment_date para inadimplência no cliente",
+    "GET /api/installments/summary": {
+      "nota_inadimplencia_backend": "parcelas com billed=false, expected_payment_date < agora (UTC), payment_date null",
+      "total_overdue": "soma valores inadimplentes",
+      "overdue_contracts": "array agregado por contrato"
+    },
+    "PUT /api/installments/{id}": "atualização parcial (JSON)",
+    "PATCH /api/installments/{id}": "mesmo comportamento de PUT",
+    "PATCH /api/installments/{id}/mark-billed": "{ \"billed\": true }"
+  },
+
+  "timesheets": {
+    "GET /api/timesheets": "cada item inclui created_at, uploaded_at, filled_at (filled_at serializado: preenchido explícito ou fallback uploaded_at)",
+    "POST /api/timesheets": {
+      "json_or_multipart": "campos opcionais: filled_at (data preenchimento); demais: contract_id, consultant_id, hours, approver, approval_date, file via timesheet_file em multipart"
+    },
+    "PUT /api/timesheets/{id}": "parcial; pode enviar filled_at"
+  },
+
+  "consultants": {
+    "POST /api/consultants": "JSON; photo_url string opcional (URL ou path interno conforme seu fluxo)",
+    "PUT /api/consultants/{id}": "parcial"
+  },
+
+  "feedbacks": {
+    "POST /api/feedbacks": {
+      "body": "{ \"consultant_id\", \"comment\", \"contract_id?\", \"rating?\" }"
+    },
+    "POST /api/consultants/{consultant_id}/feedbacks": {
+      "body": "{ \"comment\", \"contract_id?\", \"rating?\" } — consultant_id vem da URL"
+    }
+  },
+
+  "clients": {
+    "PUT /api/clients/{id}": "edição (não há PATCH dedicado)"
+  },
+
+  "partners": {
+    "PUT /api/partners/{id}": "edição; campo opcional logo_url (string, até 500 chars)"
+  },
+
+  "campos_novos_resumo": {
+    "Contract": [
+      "contract_type",
+      "estimated_monthly_hours",
+      "duration_months",
+      "total_hours_contracted"
+    ],
+    "Partner": ["logo_url"],
+    "Timesheet": ["filled_at (coluna; resposta expõe filled_at efetivo)"]
+  }
+}

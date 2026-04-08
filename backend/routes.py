@@ -26,6 +26,7 @@ def includeme(config):
     config.add_route('auth_login', '/api/auth/login')
     config.add_route('auth_register', '/api/auth/register')
     config.add_route('auth_users', '/api/auth/users')
+    config.add_route('auth_user_reset_password', '/api/auth/users/{id}/reset-password')
     config.add_route('auth_user', '/api/auth/users/{id}')
     
     # Rotas do dashboard
@@ -56,6 +57,7 @@ def includeme(config):
     config.add_route('consultant_feedback', '/api/consultants/{id}/feedback')
     # (opcional) adiciona alias caso algum view use 'feedback'
     config.add_route('feedback', '/api/consultants/{id}/feedback')
+    config.add_route('consultant_feedbacks_create', '/api/consultants/{consultant_id}/feedbacks')
     
     # Rotas de feedbacks de consultores
     config.add_route('feedbacks_list', '/api/feedbacks')

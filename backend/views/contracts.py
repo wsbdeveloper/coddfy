@@ -10,6 +10,7 @@ from backend.schemas import ContractSchema, ContractCreateSchema
 from backend.auth_helpers import require_authenticated, apply_partner_filter, can_access_resource
 import json
 from datetime import datetime
+from decimal import Decimal
 
 
 @view_defaults(renderer='json')
@@ -160,7 +161,11 @@ class ContractViews:
                 billed_value=0,
                 balance=data['total_value'],
                 status=ContractStatus(data.get('status', ContractStatus.ATIVO.value)),
-                end_date=data['end_date']
+                end_date=data['end_date'],
+                contract_type=data.get('contract_type'),
+                estimated_monthly_hours=data.get('estimated_monthly_hours'),
+                duration_months=data.get('duration_months'),
+                total_hours_contracted=data.get('total_hours_contracted'),
             )
             
             self.db.add(contract)
@@ -243,6 +248,20 @@ class ContractViews:
                         charset='utf-8'
                     )
                 contract.payment_method = data['payment_method']
+            if 'contract_type' in data:
+                contract.contract_type = data['contract_type']
+            if 'estimated_monthly_hours' in data:
+                contract.estimated_monthly_hours = data['estimated_monthly_hours']
+            if 'duration_months' in data:
+                contract.duration_months = data['duration_months']
+            if 'total_hours_contracted' in data:
+                contract.total_hours_contracted = data['total_hours_contracted']
+
+            if contract.contract_type == 'body_shop_recorrente':
+                emh = contract.estimated_monthly_hours
+                dm = contract.duration_months
+                if emh is not None and dm is not None:
+                    contract.total_hours_contracted = Decimal(str(emh)) * dm
             
             # Recalcula o balance
             contract.balance = contract.total_value - contract.billed_value

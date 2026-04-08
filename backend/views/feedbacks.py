@@ -57,22 +57,11 @@ def list_feedbacks(request):
     )
 
 
-@view_config(route_name='feedbacks_create', request_method='POST', renderer='json')
-def create_feedback(request):
-    """
-    Cria um novo feedback para um consultor
-    Usuário só pode criar feedback para consultores do seu parceiro
-    """
-    # Verificar autenticação
-    user = require_authenticated(request)
-    db = request.dbsession
-    
+def _create_feedback_response(db, user, payload):
     try:
-        # Validar dados
         schema = ConsultantFeedbackCreateSchema()
-        data = schema.load(request.json_body)
-        
-        # Verificar se o consultor existe
+        data = schema.load(payload)
+
         consultant = db.query(Consultant).filter_by(id=data['consultant_id']).first()
         if not consultant:
             return Response(
@@ -81,8 +70,7 @@ def create_feedback(request):
                 content_type='application/json',
                 charset='utf-8'
             )
-        
-        # Verificar se o usuário tem acesso ao consultor (mesmo parceiro)
+
         if not can_access_resource(user, consultant.partner_id):
             return Response(
                 body=json.dumps({'error': 'Você não tem permissão para dar feedback a este consultor'}).encode('utf-8'),
@@ -90,8 +78,7 @@ def create_feedback(request):
                 content_type='application/json',
                 charset='utf-8'
             )
-        
-        # Se especificou contrato, verificar se o consultor está nesse contrato
+
         if data.get('contract_id'):
             contract = db.query(Contract).filter_by(id=data['contract_id']).first()
             if not contract:
@@ -101,7 +88,7 @@ def create_feedback(request):
                     content_type='application/json',
                     charset='utf-8'
                 )
-            
+
             if str(consultant.contract_id) != str(data['contract_id']):
                 return Response(
                     body=json.dumps({'error': 'Consultor não está alocado neste contrato'}).encode('utf-8'),
@@ -109,8 +96,7 @@ def create_feedback(request):
                     content_type='application/json',
                     charset='utf-8'
                 )
-        
-        # Criar feedback
+
         feedback = ConsultantFeedback(
             consultant_id=data['consultant_id'],
             user_id=user.id,
@@ -120,11 +106,8 @@ def create_feedback(request):
         )
         db.add(feedback)
         db.flush()
-        
-        # Recarregar para pegar relacionamentos
         db.refresh(feedback)
-        
-        # Serializar resposta
+
         result_schema = ConsultantFeedbackSchema()
         return Response(
             body=json.dumps(result_schema.dump(feedback)).encode('utf-8'),
@@ -132,7 +115,7 @@ def create_feedback(request):
             content_type='application/json',
             charset='utf-8'
         )
-    
+
     except ValidationError as e:
         return Response(
             body=json.dumps({'error': 'Dados inválidos', 'details': e.messages}).encode('utf-8'),
@@ -140,6 +123,32 @@ def create_feedback(request):
             content_type='application/json',
             charset='utf-8'
         )
+
+
+@view_config(route_name='feedbacks_create', request_method='POST', renderer='json')
+def create_feedback(request):
+    """
+    Cria um novo feedback para um consultor
+    Usuário só pode criar feedback para consultores do seu parceiro
+    """
+    user = require_authenticated(request)
+    db = request.dbsession
+    body = request.json_body if isinstance(request.json_body, dict) else {}
+    return _create_feedback_response(db, user, body)
+
+
+@view_config(route_name='consultant_feedbacks_create', request_method='POST', renderer='json')
+def create_feedback_on_consultant(request):
+    """
+    POST /api/consultants/{consultant_id}/feedbacks
+    Mesmo contrato que POST /api/feedbacks; consultant_id vem da URL.
+    """
+    user = require_authenticated(request)
+    db = request.dbsession
+    consultant_id = request.matchdict['consultant_id']
+    body = request.json_body if isinstance(request.json_body, dict) else {}
+    merged = {**body, 'consultant_id': consultant_id}
+    return _create_feedback_response(db, user, merged)
 
 
 @view_config(route_name='feedback', request_method='GET', renderer='json')

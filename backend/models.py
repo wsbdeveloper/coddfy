@@ -69,6 +69,7 @@ class Partner(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     is_strategic = Column(Boolean, default=False, nullable=False)  # Estratégico ou não
     status = Column(String(50), default='active', nullable=False)   # Status livre (ex: active/inactive)
+    logo_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
@@ -154,6 +155,11 @@ class Contract(Base):
 
     responsible_name = Column(String(255), nullable=True)            
     payment_method = Column(String(50), nullable=False, default='parcelado')  # 'a_vista' | 'parcelado' ou usar Enum
+
+    contract_type = Column(String(50), nullable=True)
+    estimated_monthly_hours = Column(Numeric(10, 2), nullable=True)
+    duration_months = Column(Integer, nullable=True)
+    total_hours_contracted = Column(Numeric(12, 2), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -300,6 +306,7 @@ class Timesheet(Base):
     approved = Column(Boolean, default=False, nullable=False)
     uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    filled_at = Column(DateTime, nullable=True)
 
     # Relacionamentos
     contract = relationship("Contract", back_populates="timesheets")
