@@ -13,17 +13,15 @@ RUN apt-get update && apt-get install -y \
 # Instala Poetry
 RUN pip install poetry
 
-# Copia arquivos de configuração
-COPY pyproject.toml ./
+# Copia arquivos de configuração e código (necessário para instalar o pacote)
+COPY pyproject.toml poetry.lock ./
+COPY backend ./backend
 
 # Configura o Poetry para não criar virtualenv (já estamos no container)
 RUN poetry config virtualenvs.create false
 
-# Instala dependências do projeto
-RUN poetry install --no-root --no-interaction --no-ansi
-
-# Copia o código da aplicação
-COPY backend ./backend
+# Instala dependências + pacote (egg entry point usado pelo Pyramid)
+RUN poetry install --no-interaction --no-ansi
 
 # Expõe a porta do servidor
 EXPOSE 6543
