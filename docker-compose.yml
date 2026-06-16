@@ -49,7 +49,9 @@ services:
         echo '🔄 Aguardando banco de dados...' &&
         sleep 5 &&
         echo '📦 Rodando migrações...' &&
-        alembic -c backend/alembic.ini upgrade head &&
+        cd backend &&
+        alembic -c alembic.ini upgrade head &&
+        cd /app &&
         echo '🚀 Iniciando servidor backend...' &&
         python -m backend
       "
