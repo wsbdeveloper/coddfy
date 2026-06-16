@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 # Carrega .env local apenas se existir; nunca sobrescreve variáveis já definidas (ex.: Docker)
 _env_file = BASE_DIR / '.env'
 if _env_file.exists():
