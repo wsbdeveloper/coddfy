@@ -19,7 +19,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - ccm_network
+      - coddfy_network
 
   # Backend Pyramid
   backend:
@@ -58,7 +58,7 @@ services:
         python -m backend
       "
     networks:
-      - ccm_network
+      - coddfy_network
 
   # Frontend React (desenvolvimento)
   #frontend:
@@ -83,6 +83,7 @@ volumes:
   postgres_data:
 
 networks:
-  ccm_network:
+  coddfy_network:
+    name: coddfy_network
     driver: bridge
 
