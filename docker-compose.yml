@@ -47,10 +47,12 @@ services:
     command: >
       sh -c "
         echo '🔄 Aguardando banco de dados...' &&
-        sleep 5 &&
+        until pg_isready -h db -U ccm_user -d ccm_db; do sleep 1; done &&
         echo '📦 Rodando migrações...' &&
         cd backend &&
         alembic -c alembic.ini upgrade head &&
+        echo '👤 Garantindo usuário admin...' &&
+        python scripts/create_admin.py &&
         cd /app &&
         echo '🚀 Iniciando servidor backend...' &&
         python -m backend
