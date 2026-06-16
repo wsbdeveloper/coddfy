@@ -55,7 +55,6 @@ services:
         python scripts/create_admin.py &&
         cd /app &&
         echo '🚀 Iniciando servidor backend...' &&
-        poetry install --no-interaction --no-ansi &&
         python -m backend
       "
     networks:
