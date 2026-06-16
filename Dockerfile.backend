@@ -28,8 +28,8 @@ COPY backend ./backend
 # Expõe a porta do servidor
 EXPOSE 6543
 
-# Define o diretório de trabalho para backend
-WORKDIR /app/backend
+# Raiz do projeto — necessário para `python -m backend` resolver o pacote
+WORKDIR /app
 
 # Comando padrão
 CMD ["python", "-m", "backend"]
