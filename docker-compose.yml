@@ -35,7 +35,7 @@ services:
       APP_ENV: development
       APP_HOST: 0.0.0.0
       APP_PORT: 6543
-      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+      CORS_ORIGINS: http://localhost,http://localhost:5173,http://localhost:3000
     ports:
       - "6543:6543"
     volumes:
